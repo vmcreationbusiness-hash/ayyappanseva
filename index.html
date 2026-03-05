@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Swami Ayyappa Temple - Online Offering Services. Archana, Ghee Vizhaku, Coconut Vizhaku with multi-language voice support.">
+  <meta name="theme-color" content="#B8860B">
+  <title>🙏 Swami Ayyappa Temple — Online Offerings</title>
+
+  <!-- Favicon -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🙏</text></svg>">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- Divine Decorative Borders -->
+  <div class="divine-border-top"></div>
+  <div class="divine-border-bottom"></div>
+
+  <!-- Om Watermark Background -->
+  <div class="om-watermark">ॐ</div>
+
+  <!-- Lord Ayyappa Background Image -->
+  <div class="bg-image" style="background-image: url('ayyappa-bg.png');"></div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  MAIN APPLICATION                      -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="app">
+
+    <!-- ── Screen 1: Language Selection ── -->
+    <section id="screen-language" class="screen active">
+      <!-- Rendered by JS -->
+    </section>
+
+    <!-- ── Screen 2: Service Selection ── -->
+    <section id="screen-service" class="screen">
+      <!-- Rendered by JS -->
+    </section>
+
+    <!-- ── Screen 3: Name & Star Entry ── -->
+    <section id="screen-entry" class="screen">
+      <!-- Rendered by JS -->
+    </section>
+
+    <!-- ── Screen 4: Cart ── -->
+    <section id="screen-cart" class="screen">
+      <!-- Rendered by JS -->
+    </section>
+
+    <!-- ── Screen 5: Invoice & Payment ── -->
+    <section id="screen-invoice" class="screen">
+      <!-- Rendered by JS -->
+    </section>
+
+    <!-- ── Screen 6: Orders History (Admin) ── -->
+    <section id="screen-orders" class="screen">
+      <!-- Rendered by JS -->
+    </section>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  SETTINGS PANEL                        -->
+  <!-- ═══════════════════════════════════════ -->
+  <button class="settings-toggle" id="settings-toggle" onclick="toggleSettings()" title="Settings">⚙</button>
+  <div class="settings-panel-overlay" id="settings-overlay" onclick="toggleSettings()"></div>
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-title">⚙ Configuration Settings</div>
+
+    <!-- Theme Presets -->
+    <div class="settings-section">
+      <div class="settings-section-title">🎨 Theme Presets</div>
+      <div class="theme-presets">
+        <button class="theme-preset-btn active" onclick="applyTheme('divine-gold')" data-theme="divine-gold">
+          <div class="theme-swatch">
+            <div class="theme-swatch-dot" style="background:#B8860B"></div>
+            <div class="theme-swatch-dot" style="background:#FFD700"></div>
+            <div class="theme-swatch-dot" style="background:#FFFDF5"></div>
+          </div>
+          Divine Gold
+        </button>
+        <button class="theme-preset-btn" onclick="applyTheme('royal-maroon')" data-theme="royal-maroon">
+          <div class="theme-swatch">
+            <div class="theme-swatch-dot" style="background:#800020"></div>
+            <div class="theme-swatch-dot" style="background:#C41E3A"></div>
+            <div class="theme-swatch-dot" style="background:#FFF0F5"></div>
+          </div>
+          Royal Maroon
+        </button>
+        <button class="theme-preset-btn" onclick="applyTheme('sacred-blue')" data-theme="sacred-blue">
+          <div class="theme-swatch">
+            <div class="theme-swatch-dot" style="background:#1565C0"></div>
+            <div class="theme-swatch-dot" style="background:#42A5F5"></div>
+            <div class="theme-swatch-dot" style="background:#F0F8FF"></div>
+          </div>
+          Sacred Blue
+        </button>
+        <button class="theme-preset-btn" onclick="applyTheme('temple-green')" data-theme="temple-green">
+          <div class="theme-swatch">
+            <div class="theme-swatch-dot" style="background:#2E7D32"></div>
+            <div class="theme-swatch-dot" style="background:#66BB6A"></div>
+            <div class="theme-swatch-dot" style="background:#F0FFF0"></div>
+          </div>
+          Temple Green
+        </button>
+      </div>
+    </div>
+
+    <!-- Background Image -->
+    <div class="settings-section">
+      <div class="settings-section-title">🖼️ Background Image</div>
+      <div class="settings-file-upload">
+        <label class="settings-file-btn" for="bg-image-upload">
+          📁 Upload Background Image
+          <input type="file" id="bg-image-upload" accept="image/*" onchange="handleBgImageUpload(event)">
+        </label>
+        <img class="settings-file-preview" id="bg-image-preview" alt="Preview">
+      </div>
+      <div class="settings-row" style="margin-top: 16px;">
+        <span class="settings-label">Image Opacity</span>
+        <input type="range" class="settings-slider" id="bg-opacity-slider" min="0" max="40" value="8"
+          oninput="updateBgOpacity(this.value)">
+        <span class="settings-value" id="bg-opacity-value">8%</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Image Size</span>
+        <input type="range" class="settings-slider" id="bg-size-slider" min="200" max="900" value="500"
+          oninput="updateBgSize(this.value)">
+        <span class="settings-value" id="bg-size-value">500px</span>
+      </div>
+    </div>
+
+    <!-- Colors -->
+    <div class="settings-section">
+      <div class="settings-section-title">🎨 Colors</div>
+      <div class="settings-row">
+        <span class="settings-label">Background Color</span>
+        <input type="color" class="settings-color-picker" id="color-bg" value="#FFFDF5"
+          onchange="updateColor('bg', this.value)">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Primary / Accent</span>
+        <input type="color" class="settings-color-picker" id="color-primary" value="#B8860B"
+          onchange="updateColor('primary', this.value)">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Text / Foreground</span>
+        <input type="color" class="settings-color-picker" id="color-text" value="#3E2723"
+          onchange="updateColor('text', this.value)">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Card Opacity</span>
+        <input type="range" class="settings-slider" id="card-opacity-slider" min="40" max="100" value="88"
+          oninput="updateCardOpacity(this.value)">
+        <span class="settings-value" id="card-opacity-value">88%</span>
+      </div>
+    </div>
+
+    <!-- Foreground Overlay -->
+    <div class="settings-section">
+      <div class="settings-section-title">✨ Foreground Overlay</div>
+      <div class="settings-row">
+        <span class="settings-label">Overlay Color</span>
+        <input type="color" class="settings-color-picker" id="color-overlay" value="#FFFDF5"
+          onchange="updateOverlayColor(this.value)">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Overlay Opacity</span>
+        <input type="range" class="settings-slider" id="overlay-opacity-slider" min="0" max="80" value="0"
+          oninput="updateOverlayOpacity(this.value)">
+        <span class="settings-value" id="overlay-opacity-value">0%</span>
+      </div>
+    </div>
+
+    <!-- Voice Settings -->
+    <div class="settings-section">
+      <div class="settings-section-title">🎙️ Voice & STT Settings</div>
+      <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+        <span class="settings-label">Google Cloud STT API Key (Hybrid Mode)</span>
+        <input type="password" id="gcp-api-key-input" placeholder="Enter exact key..."
+          style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-family: monospace;"
+          onchange="saveGcpApiKey(this.value)">
+        <span style="font-size: 0.75rem; color: var(--text-muted);">Leave empty to use standard Web Speech API. Adding
+          an API key will enable highly accurate native Google Cloud STT.</span>
+      </div>
+    </div>
+
+    <!-- Reset -->
+    <button class="settings-reset-btn" onclick="resetSettings()">
+      🔄 Reset to Default
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  FOREGROUND OVERLAY                    -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="foreground-overlay"
+    style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;background:transparent;">
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  VOICE RECOGNITION OVERLAY             -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="voice-overlay" class="voice-overlay">
+    <div class="voice-modal">
+      <div class="voice-waves">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+      <div id="voice-status" class="voice-status">Listening...</div>
+      <div id="voice-prompt" class="voice-prompt"></div>
+      <div id="voice-result" class="voice-result"></div>
+      <button class="voice-cancel-btn" onclick="closeVoiceOverlay()">✕ Cancel</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  TOAST CONTAINER                       -->
+  <!-- ═══════════════════════════════════════ -->
+
+  <!-- No Firebase, using local Node/SQLite DB -->
+
+  <!-- Scripts -->
+  <script src="translations.js"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+
+</body>
+
+</html>
