@@ -1514,33 +1514,46 @@ function applyTheme(themeName) {
 }
 
 // ── Background Image Upload ──
-function handleBgImageUpload(event) {
+async function handleBgImageUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  // 1. Show immediate local preview
   const reader = new FileReader();
   reader.onload = (e) => {
     const dataUrl = e.target.result;
-    const bgImage = document.querySelector('.bg-image');
     const preview = document.getElementById('bg-image-preview');
-
-    if (bgImage) {
-      bgImage.style.backgroundImage = `url('${dataUrl}')`;
-    }
     if (preview) {
       preview.src = dataUrl;
       preview.classList.add('visible');
     }
-
-    // Save to localStorage
-    try {
-      localStorage.setItem('ayyappa_bg_image', dataUrl);
-    } catch (e) {
-      console.warn('Image too large for localStorage');
-    }
-    saveSettings();
+    // Update local bg for immediate feedback
+    const bgImage = document.querySelector('.bg-image');
+    if (bgImage) bgImage.style.backgroundImage = `url('${dataUrl}')`;
   };
   reader.readAsDataURL(file);
+
+  // 2. Upload to Cloud (Firebase Storage + Firestore)
+  showToast('⬆️ Uploading to cloud...');
+  const cloudUrl = await uploadToCloud(file, 'background');
+
+  if (cloudUrl) {
+    showToast('✅ Background saved to cloud!');
+    // No need to save to localStorage as cloud settings will load on refresh
+  } else {
+    // Fallback if Firebase not configured
+    showToast('ℹ️ Saved locally (Cloud not configured)', 'warning');
+    // Save to localStorage as fallback
+    reader.onload = (e) => {
+      try {
+        localStorage.setItem('ayyappa_bg_image', e.target.result);
+      } catch (e) {
+        console.warn('Image too large for localStorage');
+      }
+    };
+  }
+
+  saveSettings();
 }
 
 // ── Background Opacity ──
