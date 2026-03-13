@@ -1,0 +1,28 @@
+# Netlify Configuration
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Redirect API calls to Netlify Functions
+[[redirects]]
+  from = "/api/orders"
+  to = "/.netlify/functions/orders"
+  status = 200
+
+[[redirects]]
+  from = "/api/orders/:id"
+  to = "/.netlify/functions/orders-by-id/:id"
+  status = 200
+
+[[redirects]]
+  from = "/api/health"
+  to = "/.netlify/functions/health"
+  status = 200
+
+[[redirects]]
+  from = "/api/settings/:key"
+  to = "/.netlify/functions/settings/:key"
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "18"
