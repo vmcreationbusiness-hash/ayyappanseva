@@ -7,31 +7,7 @@
   <meta name="description"
     content="Swami Ayyappa Temple - Online Offering Services. Archana, Ghee Vizhaku, Coconut Vizhaku with multi-language voice support.">
   <meta name="theme-color" content="#B8860B">
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-
-  <script>
-    // Firebase configuration placeholders
-    // User: Please replace these with your actual Firebase project settings
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    // Initialize Firebase
-    if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
-      firebase.initializeApp(firebaseConfig);
-      console.log("🔥 Firebase Initialized");
-    } else {
-      console.warn("⚠️ Firebase credentials not set. Using local storage fallback.");
-    }
-  </script>
+  <!-- Database: MongoDB via Server API (with localStorage offline fallback) -->
 
   <title>🙏 Swami Ayyappa Temple — Online Offerings</title>
 
