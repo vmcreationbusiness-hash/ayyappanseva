@@ -9,7 +9,9 @@ const state = {
   service: null,
   cart: [],
   invoiceNo: null,
-  nextId: 1
+  nextId: 1,
+  isBotActive: false,
+  botStage: 'idle'
 };
 
 // ── Constants ──
@@ -136,8 +138,16 @@ function renderLanguageScreen() {
 
 function selectLanguage(lang) {
   state.language = lang;
-  speak(t('welcome'));
+  const msg = t('welcome');
+  speak(msg);
   renderServiceScreen();
+
+  // If user started via bot, continue bot flow
+  if (state.isBotActive) {
+    setTimeout(() => {
+      startBotServiceGuidance();
+    }, 2000);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1180,7 +1190,11 @@ function closeVoiceOverlay() {
 }
 
 // ── ChatGPT-Style Full Voice Flow ──
+// (This is the "Voice Bot" entry point)
 async function startFullVoiceFlow() {
+  state.isBotActive = true;
+  state.botStage = 'intro';
+
   if (!SpeechRecognition && !GOOGLE_CLOUD_API_KEY) {
     showToast(t('noVoiceSupport'), 'error');
     return;
@@ -1191,41 +1205,49 @@ async function startFullVoiceFlow() {
   const promptEl = document.getElementById('voice-prompt');
   const resultEl = document.getElementById('voice-result');
 
-  // Step 1: Ask for name
+  // Activate overlay
   overlay.classList.add('active');
+  document.body.classList.add('bot-speaking');
+
+  // Stage 1: Intro & Name
   statusEl.textContent = t('voiceSpeaking');
   promptEl.textContent = t('voicePromptName');
   resultEl.textContent = '';
 
   await speakAndWait(t('voicePromptName'));
 
+  document.body.classList.remove('bot-speaking');
   statusEl.textContent = t('voiceListening');
   const name = await listenForSpeech();
 
   if (!name) {
-    closeVoiceOverlay();
+    terminateBot();
     return;
   }
 
   resultEl.textContent = name;
   statusEl.textContent = `${t('voiceConfirmName')}: ${name}`;
+  document.body.classList.add('bot-speaking');
   await speakAndWait(`${t('voiceConfirmName')} ${name}`);
 
   const nameInput = document.getElementById('devotee-name');
   if (nameInput) nameInput.value = name;
 
-  // Step 2: Ask for star
+  // Stage 2: Star
+  document.body.classList.remove('bot-speaking');
   statusEl.textContent = t('voiceSpeaking');
   promptEl.textContent = t('voicePromptStar');
   resultEl.textContent = '';
 
+  document.body.classList.add('bot-speaking');
   await speakAndWait(t('voicePromptStar'));
 
+  document.body.classList.remove('bot-speaking');
   statusEl.textContent = t('voiceListening');
   const starText = await listenForSpeech();
 
   if (!starText) {
-    closeVoiceOverlay();
+    terminateBot();
     return;
   }
 
@@ -1237,16 +1259,90 @@ async function startFullVoiceFlow() {
     resultEl.textContent = nakshatras[matchedIndex];
     statusEl.textContent = `${t('voiceConfirmStar')}: ${nakshatras[matchedIndex]}`;
     if (starSelect) starSelect.value = matchedIndex.toString();
+    document.body.classList.add('bot-speaking');
     await speakAndWait(`${t('voiceConfirmStar')} ${nakshatras[matchedIndex]}`);
   } else {
     resultEl.textContent = starText;
-    closeVoiceOverlay();
+    document.body.classList.add('bot-speaking');
+    await speakAndWait(t('speakStar')); // Prompt to try again or finish
+    terminateBot();
     return;
   }
 
-  // Step 3: Auto add to cart
+  // Stage 3: Auto add to cart & transition
+  document.body.classList.remove('bot-speaking');
   closeVoiceOverlay();
   addToCart();
+
+  // Ask if they want to proceed or add more
+  setTimeout(async () => {
+    overlay.classList.add('active');
+    document.body.classList.add('bot-speaking');
+    statusEl.textContent = t('voiceSpeaking');
+    promptEl.textContent = t('proceedToPay');
+
+    await speakAndWait(t('confirmAdd') + ". " + t('proceedToPay') + "?");
+
+    document.body.classList.remove('bot-speaking');
+    statusEl.textContent = t('voiceListening');
+    const response = await listenForSpeech();
+
+    if (response && (response.toLowerCase().includes('yes') || response.toLowerCase().includes('pay') || response.toLowerCase().includes('ha'))) {
+      renderCartScreen();
+      await speakAndWait(t('proceedToPay'));
+    }
+
+    terminateBot();
+  }, 1500);
+}
+
+function terminateBot() {
+  state.isBotActive = false;
+  state.botStage = 'idle';
+  closeVoiceOverlay();
+  document.body.classList.remove('bot-speaking');
+}
+
+async function startBotServiceGuidance() {
+  if (!state.isBotActive) return;
+
+  const overlay = document.getElementById('voice-overlay');
+  const statusEl = document.getElementById('voice-status');
+  const promptEl = document.getElementById('voice-prompt');
+  const resultEl = document.getElementById('voice-result');
+
+  overlay.classList.add('active');
+  document.body.classList.add('bot-speaking');
+
+  statusEl.textContent = t('voiceSpeaking');
+  promptEl.textContent = t('selectService');
+  resultEl.textContent = '';
+
+  await speakAndWait(t('selectService'));
+
+  document.body.classList.remove('bot-speaking');
+  statusEl.textContent = t('voiceListening');
+
+  const response = await listenForSpeech();
+
+  if (response) {
+    resultEl.textContent = response;
+    const services = ['archana', 'gheeVizhaku', 'coconutVizhaku'];
+    const matchedService = findBestMatch(response, services.map(s => t(s)));
+
+    if (matchedService >= 0) {
+      const selected = services[matchedService];
+      statusEl.textContent = `${t('confirmAdd')}: ${t(selected)}`;
+      document.body.classList.add('bot-speaking');
+      await speakAndWait(`${t(selected)}. ${t('enterDetails')}`);
+      selectService(selected);
+      return;
+    }
+  }
+
+  // If no match or error, guide them back
+  statusEl.textContent = 'Please tap a service Card';
+  setTimeout(terminateBot, 2000);
 }
 
 function speakAndWait(text) {
