@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 // ── MongoDB Connection ──
 // Replace the connection string below with your MongoDB Atlas URI or local MongoDB URI
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ayyappanTemple';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://ayyappanAdmin:AyyappaSeva2026!@smartdine.knw2tcw.mongodb.net/ayyappanTemple?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ Connected to MongoDB successfully!'))
