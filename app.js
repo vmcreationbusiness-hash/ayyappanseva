@@ -1818,91 +1818,165 @@ function saveGcpApiKey(value) {
   showToast('API Key saved successfully ✅');
 }
 
+// ── Settings API URL ──
+const SETTINGS_API_URL = '/api/settings/app-settings';
+
+// ── Debounce timer for API calls (avoids spam on slider drag) ──
+let _settingsSaveTimer = null;
+
 // ── Save / Load Settings ──
 function saveSettings() {
+  // Build full settings object
+  const settings = {
+    theme:          currentTheme,
+    bgOpacity:      Number(document.getElementById('bg-opacity-slider')?.value  || 8),
+    bgSize:         Number(document.getElementById('bg-size-slider')?.value     || 500),
+    cardOpacity:    Number(document.getElementById('card-opacity-slider')?.value|| 88),
+    overlayColor:   document.getElementById('color-overlay')?.value  || '#FFFDF5',
+    overlayOpacity: Number(document.getElementById('overlay-opacity-slider')?.value || 0),
+    colorBg:        document.getElementById('color-bg')?.value       || '#FFFDF5',
+    colorPrimary:   document.getElementById('color-primary')?.value  || '#B8860B',
+    colorText:      document.getElementById('color-text')?.value     || '#3E2723'
+  };
+
+  // 1. Save instantly to localStorage (offline / fast fallback)
   try {
-    const settings = {
-      theme: currentTheme,
-      bgOpacity: document.getElementById('bg-opacity-slider')?.value || 8,
-      bgSize: document.getElementById('bg-size-slider')?.value || 500,
-      cardOpacity: document.getElementById('card-opacity-slider')?.value || 88,
-      overlayColor: document.getElementById('color-overlay')?.value || '#FFFDF5',
-      overlayOpacity: document.getElementById('overlay-opacity-slider')?.value || 0,
-      colorBg: document.getElementById('color-bg')?.value || '#FFFDF5',
-      colorPrimary: document.getElementById('color-primary')?.value || '#B8860B',
-      colorText: document.getElementById('color-text')?.value || '#3E2723'
-    };
     localStorage.setItem('ayyappa_settings', JSON.stringify(settings));
   } catch (e) {
-    console.warn('Could not save settings');
+    console.warn('localStorage save failed:', e);
+  }
+
+  // 2. Debounce cloud save (300 ms) so slider drags don't spam the API
+  clearTimeout(_settingsSaveTimer);
+  _settingsSaveTimer = setTimeout(() => saveSettingsToCloud(settings), 300);
+}
+
+async function saveSettingsToCloud(settings) {
+  try {
+    const res = await fetch(SETTINGS_API_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    if (res.ok) {
+      console.log('✅ Settings saved to MongoDB');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      console.warn('⚠️ Settings cloud save failed:', err.error || res.status);
+    }
+  } catch (e) {
+    // Network offline — localStorage already has the data, no action needed
+    console.warn('⚠️ Settings cloud save offline:', e.message);
+  }
+}
+
+// ── Apply a settings object to the UI ──
+function applySettingsObject(settings) {
+  if (!settings) return;
+
+  // Theme
+  if (settings.theme) applyTheme(settings.theme);
+
+  // Background opacity
+  if (settings.bgOpacity != null) {
+    const s = document.getElementById('bg-opacity-slider');
+    if (s) { s.value = settings.bgOpacity; updateBgOpacity(settings.bgOpacity); }
+  }
+  // Background size
+  if (settings.bgSize != null) {
+    const s = document.getElementById('bg-size-slider');
+    if (s) { s.value = settings.bgSize; updateBgSize(settings.bgSize); }
+  }
+  // Card opacity
+  if (settings.cardOpacity != null) {
+    const s = document.getElementById('card-opacity-slider');
+    if (s) { s.value = settings.cardOpacity; updateCardOpacity(settings.cardOpacity); }
+  }
+  // Overlay
+  if (settings.overlayOpacity != null) {
+    const s = document.getElementById('overlay-opacity-slider');
+    const c = document.getElementById('color-overlay');
+    if (s) s.value = settings.overlayOpacity;
+    if (c && settings.overlayColor) c.value = settings.overlayColor;
+    updateOverlayOpacity(settings.overlayOpacity);
+  }
+  // Custom colors (pickers)
+  const bgPicker  = document.getElementById('color-bg');
+  const priPicker = document.getElementById('color-primary');
+  const txtPicker = document.getElementById('color-text');
+  if (bgPicker  && settings.colorBg)      bgPicker.value  = settings.colorBg;
+  if (priPicker && settings.colorPrimary) priPicker.value = settings.colorPrimary;
+  if (txtPicker && settings.colorText)    txtPicker.value = settings.colorText;
+
+  // Background image URL from cloud
+  if (settings.bgUrl) {
+    const bgImage = document.querySelector('.bg-image');
+    if (bgImage) bgImage.style.backgroundImage = `url('${settings.bgUrl}')`;
   }
 }
 
 function loadSettings() {
+  // ── Step 1: Apply localStorage immediately (instant, no flicker) ──
   try {
     const saved = localStorage.getItem('ayyappa_settings');
-    if (!saved) return;
-
-    const settings = JSON.parse(saved);
-
-    // Apply theme
-    if (settings.theme) applyTheme(settings.theme);
-
-    // Apply sliders
-    if (settings.bgOpacity) {
-      const s = document.getElementById('bg-opacity-slider');
-      if (s) { s.value = settings.bgOpacity; updateBgOpacity(settings.bgOpacity); }
-    }
-    if (settings.bgSize) {
-      const s = document.getElementById('bg-size-slider');
-      if (s) { s.value = settings.bgSize; updateBgSize(settings.bgSize); }
-    }
-    if (settings.cardOpacity) {
-      const s = document.getElementById('card-opacity-slider');
-      if (s) { s.value = settings.cardOpacity; updateCardOpacity(settings.cardOpacity); }
-    }
-
-    // Apply overlay
-    if (settings.overlayOpacity && settings.overlayColor) {
-      const s = document.getElementById('overlay-opacity-slider');
-      const c = document.getElementById('color-overlay');
-      if (s) s.value = settings.overlayOpacity;
-      if (c) c.value = settings.overlayColor;
-      updateOverlayOpacity(settings.overlayOpacity);
-    }
-
-    // Apply custom colors
-    if (settings.colorBg) {
-      const c = document.getElementById('color-bg');
-      if (c) c.value = settings.colorBg;
-    }
-    if (settings.colorPrimary) {
-      const c = document.getElementById('color-primary');
-      if (c) c.value = settings.colorPrimary;
-    }
-    if (settings.colorText) {
-      const c = document.getElementById('color-text');
-      if (c) c.value = settings.colorText;
-    }
-
-    // Load saved bg image
-    const bgImageData = localStorage.getItem('ayyappa_bg_image');
-    if (bgImageData) {
-      const bgImage = document.querySelector('.bg-image');
-      const preview = document.getElementById('bg-image-preview');
-      if (bgImage) bgImage.style.backgroundImage = `url('${bgImageData}')`;
-      if (preview) { preview.src = bgImageData; preview.classList.add('visible'); }
-    }
-
-    // Load GCP API Key
-    const savedApiKey = localStorage.getItem('ayyappa_gcp_api_key');
-    if (savedApiKey) {
-      GOOGLE_CLOUD_API_KEY = savedApiKey;
-      const keyInput = document.getElementById('gcp-api-key-input');
-      if (keyInput) keyInput.value = savedApiKey;
-    }
+    if (saved) applySettingsObject(JSON.parse(saved));
   } catch (e) {
-    console.warn('Could not load settings');
+    console.warn('localStorage settings parse error:', e);
+  }
+
+  // Load bg image from localStorage
+  const bgImageData = localStorage.getItem('ayyappa_bg_image');
+  if (bgImageData) {
+    const bgImage = document.querySelector('.bg-image');
+    const preview = document.getElementById('bg-image-preview');
+    if (bgImage) bgImage.style.backgroundImage = `url('${bgImageData}')`;
+    if (preview) { preview.src = bgImageData; preview.classList.add('visible'); }
+  }
+
+  // Load GCP API Key (stays local only — never sent to server)
+  const savedApiKey = localStorage.getItem('ayyappa_gcp_api_key');
+  if (savedApiKey) {
+    GOOGLE_CLOUD_API_KEY = savedApiKey;
+    const keyInput = document.getElementById('gcp-api-key-input');
+    if (keyInput) keyInput.value = savedApiKey;
+  }
+
+  // ── Step 2: Fetch from MongoDB in background and sync ──
+  loadSettingsFromCloud();
+}
+
+async function loadSettingsFromCloud() {
+  try {
+    const res = await fetch(SETTINGS_API_URL, { method: 'GET' });
+    if (!res.ok) {
+      // 404 = no saved settings yet in DB, that's fine
+      if (res.status !== 404) console.warn('⚠️ Could not load cloud settings:', res.status);
+      return;
+    }
+    const settings = await res.json();
+
+    // Apply cloud settings (they are the source of truth)
+    applySettingsObject(settings);
+
+    // Also sync to localStorage so next load is instant
+    try {
+      localStorage.setItem('ayyappa_settings', JSON.stringify({
+        theme:          settings.theme,
+        bgOpacity:      settings.bgOpacity,
+        bgSize:         settings.bgSize,
+        cardOpacity:    settings.cardOpacity,
+        overlayColor:   settings.overlayColor,
+        overlayOpacity: settings.overlayOpacity,
+        colorBg:        settings.colorBg,
+        colorPrimary:   settings.colorPrimary,
+        colorText:      settings.colorText
+      }));
+    } catch (e) { /* ignore */ }
+
+    console.log('✅ Settings loaded from MongoDB');
+  } catch (e) {
+    // Network error — already using localStorage version, no action needed
+    console.warn('⚠️ Could not reach settings API (using local):', e.message);
   }
 }
 
