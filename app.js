@@ -1614,42 +1614,83 @@ async function handleBgImageUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  // 1. Show immediate local preview
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const dataUrl = e.target.result;
-    const preview = document.getElementById('bg-image-preview');
-    if (preview) {
-      preview.src = dataUrl;
-      preview.classList.add('visible');
+  showToast('⬆️ Processing image...');
+
+  // 1. Read file as data URL
+  const dataUrl = await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+
+  // 2. Show immediate local preview
+  const preview = document.getElementById('bg-image-preview');
+  if (preview) {
+    preview.src = dataUrl;
+    preview.classList.add('visible');
+  }
+  const bgImage = document.querySelector('.bg-image');
+  if (bgImage) bgImage.style.backgroundImage = `url('${dataUrl}')`;
+
+  // 3. Compress image via canvas (keep under MongoDB 16MB limit)
+  const compressedUrl = await compressImage(dataUrl, 800, 0.7);
+
+  // 4. Save to localStorage as fast fallback
+  try {
+    localStorage.setItem('ayyappa_bg_image', compressedUrl);
+  } catch (e) {
+    console.warn('Image too large for localStorage');
+  }
+
+  // 5. Save compressed base64 to MongoDB via settings API
+  try {
+    const res = await fetch(SETTINGS_API_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bgUrl: compressedUrl, fileName: file.name })
+    });
+    if (res.ok) {
+      showToast('✅ Background saved to MongoDB!');
+      console.log('✅ Background image saved to MongoDB');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast('⚠️ Cloud save failed: ' + (err.error || ''), 'error');
     }
-    // Update local bg for immediate feedback
-    const bgImage = document.querySelector('.bg-image');
-    if (bgImage) bgImage.style.backgroundImage = `url('${dataUrl}')`;
-  };
-  reader.readAsDataURL(file);
-
-  // 2. Upload to Cloud (Firebase Storage + Firestore)
-  showToast('⬆️ Uploading to cloud...');
-  const cloudUrl = await uploadToCloud(file, 'background');
-
-  if (cloudUrl) {
-    showToast('✅ Background saved to cloud!');
-    // No need to save to localStorage as cloud settings will load on refresh
-  } else {
-    // Fallback if Firebase not configured
-    showToast('ℹ️ Saved locally (Cloud not configured)', 'warning');
-    // Save to localStorage as fallback
-    reader.onload = (e) => {
-      try {
-        localStorage.setItem('ayyappa_bg_image', e.target.result);
-      } catch (e) {
-        console.warn('Image too large for localStorage');
-      }
-    };
+  } catch (e) {
+    showToast('ℹ️ Saved locally (server offline)', 'warning');
+    console.warn('⚠️ Could not save bg image to cloud:', e.message);
   }
 
   saveSettings();
+}
+
+// ── Compress image to fit MongoDB document size limit ──
+function compressImage(dataUrl, maxSize = 800, quality = 0.7) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width;
+      let h = img.height;
+
+      // Scale down if larger than maxSize
+      if (w > maxSize || h > maxSize) {
+        const ratio = Math.min(maxSize / w, maxSize / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Convert to compressed JPEG
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl); // fallback to original
+    img.src = dataUrl;
+  });
 }
 
 // ── Background Opacity ──
