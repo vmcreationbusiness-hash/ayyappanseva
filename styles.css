@@ -45,11 +45,14 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
   scroll-behavior: smooth;
   font-size: clamp(14px, 1.2vw + 8px, 18px);
+  /* Safe area support for notched devices */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 body {
@@ -57,8 +60,12 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   position: relative;
+  /* Prevent horizontal overflow issues */
+  width: 100%;
+  max-width: 100vw;
 }
 
 /* ── Divine Background ── */
@@ -102,6 +109,8 @@ body::before {
   background: linear-gradient(90deg,
       var(--secondary), var(--primary), var(--accent), var(--primary), var(--secondary));
   z-index: 1000;
+  /* Safe area for notched devices */
+  top: env(safe-area-inset-top, 0);
 }
 
 .divine-border-bottom {
@@ -113,6 +122,8 @@ body::before {
   background: linear-gradient(90deg,
       var(--secondary), var(--primary), var(--accent), var(--primary), var(--secondary));
   z-index: 1000;
+  /* Safe area for home indicator */
+  bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* ── App Container ── */
@@ -132,7 +143,14 @@ body::before {
   min-height: 100vh;
   min-height: 100dvh;
   padding: clamp(16px, 3vw, 30px) clamp(12px, 3vw, 20px) clamp(40px, 5vw, 60px);
+  /* Safe area padding for notched devices */
+  padding-left: max(clamp(12px, 3vw, 20px), env(safe-area-inset-left));
+  padding-right: max(clamp(12px, 3vw, 20px), env(safe-area-inset-right));
+  padding-bottom: max(clamp(40px, 5vw, 60px), env(safe-area-inset-bottom));
   animation: fadeIn 0.6s ease-out;
+  /* Ensure content doesn't overflow */
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .screen.active {
@@ -929,6 +947,9 @@ body.bot-speaking .voice-status {
   align-items: center;
   gap: 8px;
   letter-spacing: 0.3px;
+  /* Minimum touch target for mobile (WCAG 2.5.5) */
+  min-height: 44px;
+  touch-action: manipulation;
 }
 
 .btn-primary {
@@ -1035,7 +1056,7 @@ body.bot-speaking .voice-status {
   border-collapse: separate;
   border-spacing: 0;
   margin-bottom: 24px;
-  min-width: 400px;
+  min-width: 0;
 }
 
 .cart-table thead {
@@ -1185,7 +1206,7 @@ body.bot-speaking .voice-status {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 24px;
-  min-width: 360px;
+  min-width: 0;
 }
 
 .invoice-table th {
@@ -1292,6 +1313,10 @@ body.bot-speaking .voice-status {
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
+  /* Safe area padding for notched devices */
+  padding-left: max(24px, env(safe-area-inset-left));
+  padding-right: max(24px, env(safe-area-inset-right));
+  padding-top: max(16px, env(safe-area-inset-top));
   background: var(--bg-card);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -1300,6 +1325,8 @@ body.bot-speaking .voice-status {
   top: 0;
   z-index: 100;
   width: 100%;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .nav-left {
@@ -1335,6 +1362,10 @@ body.bot-speaking .voice-status {
   display: flex;
   align-items: center;
   gap: 6px;
+  /* Minimum touch target */
+  min-height: 40px;
+  touch-action: manipulation;
+  white-space: nowrap;
 }
 
 .btn-nav:hover {
@@ -1388,9 +1419,44 @@ body.bot-speaking .voice-status {
   background: var(--danger);
 }
 
-/* ── Responsive ── */
+/* ══════════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   - Ultra-wide: 1800px+
+   - Large Desktop: 1400px+
+   - Desktop: 1200px+
+   - Laptop/Small Desktop: 1024px
+   - iPad Landscape / Tablet: 1024px
+   - iPad Portrait / Tablet: 768px
+   - Large Phone: 480px
+   - Small Phone: 360px
+   - Tiny Phone: 320px
+   ══════════════════════════════════════════════════ */
 
-/* Extra Large Desktops (1400px+) */
+/* ── Ultra-Wide Desktops (1800px+) ── */
+@media (min-width: 1800px) {
+  html {
+    font-size: 19px;
+  }
+
+  .language-grid {
+    max-width: 700px;
+  }
+
+  .service-grid {
+    max-width: 1200px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cart-container {
+    max-width: 1000px;
+  }
+
+  .invoice-container {
+    max-width: 900px;
+  }
+}
+
+/* ── Extra Large Desktops (1400px+) ── */
 @media (min-width: 1400px) {
   .language-grid {
     max-width: 600px;
@@ -1413,14 +1479,23 @@ body.bot-speaking .voice-status {
   }
 }
 
-/* Tablets & Small Laptops */
+/* ── iPad Landscape & Small Laptops (max 1024px) ── */
 @media (max-width: 1024px) {
   .split-right {
     flex: 0 0 320px;
   }
+
+  .service-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: 16px;
+  }
+
+  .nav-bar {
+    padding: 14px 20px;
+  }
 }
 
-/* Tablets Portrait */
+/* ── iPad Portrait & Tablets (max 768px) ── */
 @media (max-width: 768px) {
   .language-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1440,10 +1515,16 @@ body.bot-speaking .voice-status {
     padding: 24px 16px;
   }
 
+  /* Responsive table: make cells stack better */
   .cart-table th,
   .cart-table td {
     padding: 10px 8px;
     font-size: 0.85rem;
+  }
+
+  .cart-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .invoice-meta {
@@ -1462,6 +1543,8 @@ body.bot-speaking .voice-status {
 
   .nav-bar {
     padding: 12px 16px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
   }
 
   .nav-title {
@@ -1471,6 +1554,7 @@ body.bot-speaking .voice-status {
   .btn-nav {
     padding: 6px 12px;
     font-size: 0.8rem;
+    min-height: 36px;
   }
 
   .om-watermark {
@@ -1493,13 +1577,37 @@ body.bot-speaking .voice-status {
   .voice-result {
     font-size: 1.1rem;
   }
+
+  .invoice-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent text from overflowing */
+  .invoice-header h2 {
+    font-size: 1.3rem;
+    word-break: break-word;
+  }
+
+  .form-card {
+    padding: clamp(16px, 3vw, 28px) clamp(12px, 3vw, 24px);
+  }
 }
 
-/* Small Mobile */
+/* ── Large Phones (max 480px) ── */
 @media (max-width: 480px) {
+  html {
+    font-size: 15px;
+  }
+
   .language-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+    max-width: 100%;
+  }
+
+  .lang-card {
+    padding: 16px 10px;
   }
 
   .lang-card .lang-flag {
@@ -1534,12 +1642,15 @@ body.bot-speaking .voice-status {
   .form-group input,
   .form-group select {
     padding: 12px 14px;
-    font-size: 0.95rem;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    min-height: 48px;
   }
 
   .btn {
     padding: 12px 24px;
     font-size: 0.9rem;
+    width: 100%;
+    justify-content: center;
   }
 
   .btn-lg {
@@ -1548,17 +1659,29 @@ body.bot-speaking .voice-status {
   }
 
   .btn-voice {
-    width: 46px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
     font-size: 19px;
+    flex-shrink: 0;
   }
 
-  .cart-table {
-    min-width: 320px;
+  /* Responsive table: let it scroll naturally */
+  .cart-card {
+    padding: clamp(12px, 3vw, 24px);
   }
 
-  .invoice-table {
-    min-width: 300px;
+  .cart-table th,
+  .cart-table td {
+    padding: 8px 6px;
+    font-size: 0.82rem;
+    word-break: break-word;
+  }
+
+  .invoice-table th,
+  .invoice-table td {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    word-break: break-word;
   }
 
   .upi-section {
@@ -1570,25 +1693,104 @@ body.bot-speaking .voice-status {
   }
 
   .toast {
-    width: 90vw;
+    width: calc(100vw - 32px);
+    max-width: 90vw;
     font-size: 0.85rem;
     padding: 12px 16px;
+    bottom: max(20px, env(safe-area-inset-bottom));
   }
-}
 
-/* Extra Small Mobile */
-@media (max-width: 360px) {
-  .language-grid {
-    grid-template-columns: 1fr;
+  .screen {
+    padding: 12px 10px clamp(30px, 5vw, 50px);
+    padding-bottom: max(30px, env(safe-area-inset-bottom));
+  }
+
+  .entry-container,
+  .cart-container,
+  .invoice-container {
+    max-width: 100%;
+    padding: 0 8px;
+  }
+
+  .split-layout {
+    padding: 0 8px;
+  }
+
+  .form-card {
+    padding: 16px 14px;
+    border-radius: var(--radius);
   }
 
   .nav-right {
-    gap: 6px;
+    gap: 8px;
+  }
+
+  .nav-left {
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .nav-title {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .invoice-card {
+    padding: 16px 12px;
+  }
+
+  .invoice-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .invoice-meta {
+    padding: 12px;
+  }
+
+  .cart-total-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .input-wrapper {
+    gap: 8px;
+  }
+}
+
+/* ── Extra Small Mobile (max 360px) ── */
+@media (max-width: 360px) {
+  html {
+    font-size: 14px;
+  }
+
+  .language-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .lang-card {
+    padding: 14px 8px;
+  }
+
+  .nav-bar {
+    padding: 10px 12px;
+    flex-wrap: nowrap;
+  }
+
+  .nav-right {
+    gap: 4px;
   }
 
   .btn-nav {
     padding: 5px 8px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+  }
+
+  .btn-nav span:not(.cart-count) {
+    display: none;
   }
 
   .cart-count {
@@ -1608,9 +1810,71 @@ body.bot-speaking .voice-status {
   .voice-waves .wave-bar {
     width: 4px;
   }
+
+  .temple-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .service-card {
+    padding: 18px 12px;
+  }
+
+  .current-service-badge {
+    font-size: 0.78rem;
+    padding: 6px 12px;
+  }
+
+  .form-card {
+    padding: 14px 10px;
+  }
+
+  .om-watermark {
+    font-size: 140px;
+  }
 }
 
-/* Landscape phones */
+/* ── Tiny Mobile (max 320px - old iPhones, SE) ── */
+@media (max-width: 320px) {
+  html {
+    font-size: 13px;
+  }
+
+  .language-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .lang-card {
+    padding: 12px 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+  }
+
+  .lang-card .lang-flag {
+    font-size: 24px;
+    margin-bottom: 0;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+
+  .nav-title {
+    font-size: 0.75rem;
+    max-width: 100px;
+  }
+
+  .cart-table th,
+  .cart-table td {
+    padding: 6px 4px;
+    font-size: 0.78rem;
+  }
+}
+
+/* ── Landscape phones ── */
 @media (max-height: 500px) and (orientation: landscape) {
   .screen {
     min-height: auto;
@@ -1624,11 +1888,31 @@ body.bot-speaking .voice-status {
 
   .temple-icon {
     font-size: 36px;
+    margin-bottom: 6px;
+  }
+
+  .temple-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .language-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    max-width: 90vw;
+  }
+
+  .lang-card {
+    padding: 14px 10px;
+  }
+
+  .service-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 
   .voice-modal {
     padding: 20px;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow-y: auto;
   }
 
@@ -1641,6 +1925,88 @@ body.bot-speaking .voice-status {
 
   .bot-fab-text {
     display: none;
+  }
+
+  .om-watermark {
+    font-size: 160px;
+  }
+}
+
+/* ── Landscape tablets/iPads ── */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .service-grid {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 95vw;
+  }
+
+  .split-layout {
+    flex-direction: row;
+    max-width: 95vw;
+  }
+
+  .split-right {
+    flex: 0 0 280px;
+  }
+}
+
+/* ── iPad Air / iPad Pro specific (portrait) ── */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: portrait) {
+  .language-grid {
+    max-width: 600px;
+    gap: 16px;
+  }
+
+  .service-grid {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 700px;
+    gap: 18px;
+  }
+
+  .service-card {
+    padding: 28px 20px;
+  }
+
+  .form-card {
+    padding: 32px 28px;
+  }
+
+  .cart-container,
+  .invoice-container {
+    max-width: 700px;
+  }
+}
+
+/* ── High-resolution displays (Retina/HiDPI) ── */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .divine-border-top {
+    height: 4px;
+  }
+
+  .divine-border-bottom {
+    height: 3px;
+  }
+}
+
+/* ── Prefer reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .bot-fab {
+    animation: none;
+  }
+
+  .bot-fab-pulse {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 
@@ -1786,8 +2152,8 @@ body.bot-speaking .voice-status {
 /* ── Settings Toggle Button ── */
 .settings-toggle {
   position: fixed;
-  top: 14px;
-  right: 20px;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(20px, env(safe-area-inset-right));
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -1804,6 +2170,7 @@ body.bot-speaking .voice-status {
   justify-content: center;
   transition: var(--transition);
   box-shadow: 0 4px 16px var(--shadow);
+  touch-action: manipulation;
 }
 
 .settings-toggle:hover {
@@ -1824,17 +2191,20 @@ body.bot-speaking .voice-status {
   top: 0;
   right: -420px;
   width: 400px;
-  max-width: 90vw;
+  max-width: 92vw;
   height: 100vh;
+  height: 100dvh;
   background: var(--bg-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-left: 2px solid var(--border);
   z-index: 999;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: -8px 0 40px var(--shadow-heavy);
   padding: 80px 28px 40px;
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
 }
 
 .settings-panel.open {
@@ -2122,6 +2492,7 @@ body.bot-speaking .voice-status {
     width: 100vw;
     right: -100vw;
     padding: 70px 16px 30px;
+    padding-bottom: max(30px, env(safe-area-inset-bottom));
   }
 
   .settings-title {
@@ -2140,6 +2511,19 @@ body.bot-speaking .voice-status {
   .theme-preset-btn {
     padding: 10px 8px;
     font-size: 0.75rem;
+  }
+
+  .settings-toggle {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+  }
+
+  .settings-row {
+    flex-wrap: wrap;
+  }
+
+  .settings-slider {
+    max-width: 140px;
   }
 }
 
@@ -2289,8 +2673,8 @@ body.bot-speaking .voice-status {
 /* ── Floating AI Assistant Button (Bot FAB) ── */
 .bot-fab {
   position: fixed;
-  bottom: 80px;
-  right: 30px;
+  bottom: max(80px, calc(80px + env(safe-area-inset-bottom)));
+  right: max(30px, env(safe-area-inset-right));
   width: 70px;
   height: 70px;
   border-radius: 50%;
@@ -2308,6 +2692,7 @@ body.bot-speaking .voice-status {
   transition: var(--transition);
   animation: float 4s ease-in-out infinite;
   overflow: visible;
+  touch-action: manipulation;
 }
 
 .bot-fab:hover {
@@ -2353,17 +2738,30 @@ body.bot-speaking .voice-status {
   }
 }
 
-/* Hide FAB on very small screens to avoid overlap */
+/* FAB on mobile */
 @media (max-width: 480px) {
   .bot-fab {
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
+    bottom: max(20px, calc(20px + env(safe-area-inset-bottom)));
+    right: max(16px, env(safe-area-inset-right));
+    width: 56px;
+    height: 56px;
+  }
+
+  .bot-fab-icon {
+    font-size: 20px;
   }
 
   .bot-fab-text {
     display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .bot-fab {
+    width: 50px;
+    height: 50px;
+    bottom: max(16px, calc(16px + env(safe-area-inset-bottom)));
+    right: max(12px, env(safe-area-inset-right));
   }
 }
 
