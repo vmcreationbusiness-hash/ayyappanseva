@@ -4,14 +4,25 @@
 // ═══════════════════════════════════════════════════════════
 
 // ── State ──
+// ── State ──
 const state = {
-  language: null,
+  language: 'en',
   service: null,
   cart: [],
   invoiceNo: null,
   nextId: 1,
-  isBotActive: false,
-  botStage: 'idle'
+  config: {
+    upiId: "temple@upi",
+    merchantName: "Swami Ayyappa Temple",
+    services: [], // Default empty, populated from Mongo
+    voiceEngine: 'web',
+    sarvamKey: '',
+    googleKey: '',
+    openaiKey: '',
+    reverieKey: '',
+    reverieAppId: ''
+  },
+  recentOrders: []
 };
 
 // ── Constants ──
@@ -25,18 +36,148 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
-  renderLanguageScreen();
+  state.language = 'en'; // Default English
+  loadConfigAndServices().then(() => {
+    renderNavbar();
+    renderServiceScreen();
+  });
+  loadSettings();
   setupVoiceOverlay();
 }
 
+function renderNavbar() {
+  const langContainer = document.getElementById('top-lang-selector');
+  const actionContainer = document.getElementById('menu-actions');
+  const titleEl = document.getElementById('menu-title');
+  if(!langContainer || !actionContainer) return;
+
+  // 1. Render Language Selector
+  const langs = [
+    { code: 'en', name: 'English' },
+    { code: 'ta', name: 'தமிழ்' },
+    { code: 'te', name: 'తెలుగు' },
+    { code: 'kn', name: 'ಕನ್ನಡ' },
+    { code: 'ml', name: 'മലയാളം' }
+  ];
+  langContainer.innerHTML = langs.map(l => `
+    <div class="lang-badge ${state.language === l.code ? 'active' : ''}" 
+         onclick="setLanguage('${l.code}')">
+      ${l.name}
+    </div>
+  `).join('');
+
+  // 2. Render Contextual Actions
+  const activeScreen = document.querySelector('.screen.active');
+  const screenId = activeScreen ? activeScreen.id : 'screen-service';
+  
+  let actionsHtml = '';
+  
+  if (screenId === 'screen-service') {
+    actionsHtml = `
+      <button class="btn-menu" onclick="renderOrdersScreen()">
+        📋 <span>${t('orderHistory')}</span>
+      </button>
+    `;
+  } else if (screenId === 'screen-entry') {
+    actionsHtml = `
+      <button class="btn-menu" onclick="renderServiceScreen()">
+        ◀ <span>${t('changeService')}</span>
+      </button>
+    `;
+  } else if (screenId === 'screen-orders') {
+    actionsHtml = `
+      <button class="btn-menu" onclick="renderServiceScreen()">
+        🏠 <span>${t('backToHome')}</span>
+      </button>
+    `;
+  }
+
+  // Always add Settings button
+  actionsHtml += `
+    <button class="btn-menu settings-btn" onclick="toggleSettings()" title="Settings">
+      ⚙️
+    </button>
+  `;
+  
+  actionContainer.innerHTML = actionsHtml;
+  
+  // 3. Update Title if needed
+  if (titleEl) {
+     if (screenId === 'screen-orders') titleEl.textContent = t('orderHistory');
+     else titleEl.textContent = state.config.merchantName || "Swami Ayyappa Temple";
+  }
+}
+
+function setLanguage(lang) {
+  state.language = lang;
+  renderNavbar();
+  
+  // Re-render current screen
+  const activeScreen = document.querySelector('.screen.active');
+  if (activeScreen) {
+    if (activeScreen.id === 'screen-service') renderServiceScreen();
+    else if (activeScreen.id === 'screen-entry') renderEntryScreen();
+    else if (activeScreen.id === 'screen-orders') renderOrdersScreen();
+    else if (activeScreen.id === 'screen-invoice') { /* invoice usually static once generated */ }
+  }
+  
+  renderSettingsOfferings();
+  showToast('Language changed to ' + TRANSLATIONS[lang].langName);
+  
+  // Voice confirmation of language change
+  const msg = lang === 'en' ? 'Language changed to English' : t('confirmAdd'); // Fallback or specific message
+  speak(TRANSLATIONS[lang].welcome); // Welcoming in the new language is more divine
+}
+
 // ── Utility Functions ──
+// Translate with current state language
 function t(key) {
-  if (!state.language) return key;
-  return TRANSLATIONS[state.language][key] || key;
+  const lang = state.language || 'en';
+  if (!TRANSLATIONS[lang]) return key;
+  return TRANSLATIONS[lang][key] || key;
+}
+
+// Translate specifically to English (used for Invoice & Cart Display as requested)
+function enT(key) {
+  if (!TRANSLATIONS['en']) return key;
+  return TRANSLATIONS['en'][key] || key;
+}
+
+/**
+ * Returns the English name for a star, regardless of input language.
+ */
+function getEnglishStarName(starName) {
+  if (!starName) return "";
+  // Search through all languages
+  for (const lang in NAKSHATRAS) {
+    const list = NAKSHATRAS[lang];
+    const idx = list.indexOf(starName);
+    if (idx >= 0) return NAKSHATRAS.en[idx];
+  }
+  return starName;
 }
 
 function getNakshatras() {
   return NAKSHATRAS[state.language] || NAKSHATRAS.en;
+}
+
+/**
+ * Searches for a star name across ALL languages defined in NAKSHATRAS.
+ * Returns the index (0-26) if found, else -1.
+ */
+function findNakshatraIndexUniversal(transcript) {
+  if (!transcript) return -1;
+  
+  // Try matching against each language's nakshatra list
+  for (const lang in NAKSHATRAS) {
+    const list = NAKSHATRAS[lang];
+    const matchIdx = findBestMatch(transcript, list);
+    if (matchIdx >= 0) {
+      console.log(`🎯 Universal Match: "${transcript}" -> ${list[matchIdx]} (${lang}) at index ${matchIdx}`);
+      return matchIdx;
+    }
+  }
+  return -1;
 }
 
 function getServiceIcon(service) {
@@ -76,6 +217,7 @@ function showScreen(screenId) {
     screen.scrollTop = 0;
     window.scrollTo(0, 0);
   }
+  renderNavbar();
 }
 
 // ── Toast Notifications ──
@@ -99,194 +241,146 @@ function showToast(message, type = 'success') {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  SCREEN 1: LANGUAGE SELECTION
-// ═══════════════════════════════════════════════════════════
-function renderLanguageScreen() {
-  const screen = document.getElementById('screen-language');
-  screen.innerHTML = `
-    <div class="temple-header">
-      <div class="temple-icon">🙏</div>
-      <h1>Swami Ayyappa Temple</h1>
-      <p>Online Offering Services</p>
-    </div>
-    <div class="section-title">Select Your Language</div>
-    <div class="language-grid">
-      <div class="lang-card" onclick="selectLanguage('en')">
-        <div class="lang-flag">🇬🇧</div>
-        <div class="lang-name">English</div>
-        <div class="lang-native">English</div>
-      </div>
-      <div class="lang-card" onclick="selectLanguage('ta')">
-        <div class="lang-flag">🇮🇳</div>
-        <div class="lang-name">Tamil</div>
-        <div class="lang-native">தமிழ்</div>
-      </div>
-      <div class="lang-card" onclick="selectLanguage('te')">
-        <div class="lang-flag">🇮🇳</div>
-        <div class="lang-name">Telugu</div>
-        <div class="lang-native">తెలుగు</div>
-      </div>
-      <div class="lang-card" onclick="selectLanguage('ml')">
-        <div class="lang-flag">🇮🇳</div>
-        <div class="lang-name">Malayalam</div>
-        <div class="lang-native">മലയാളം</div>
-      </div>
-    </div>
-  `;
-  showScreen('screen-language');
-}
-
-function selectLanguage(lang) {
-  state.language = lang;
-  const msg = t('welcome');
-  speak(msg);
-  renderServiceScreen();
-
-  // If user started via bot, continue bot flow
-  if (state.isBotActive) {
-    setTimeout(() => {
-      startBotServiceGuidance();
-    }, 2000);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-//  SCREEN 2: SERVICE SELECTION
+//  SCREEN 1: SERVICE SELECTION (LANDING PAGE)
 // ═══════════════════════════════════════════════════════════
 function renderServiceScreen() {
   const screen = document.getElementById('screen-service');
-  screen.innerHTML = `
-    <div class="nav-bar">
-      <div class="nav-left">
-        <span style="font-size:24px">🙏</span>
-        <span class="nav-title">${t('welcome')}</span>
-      </div>
-      <div class="nav-right">
-        <button class="btn-nav" onclick="renderOrdersScreen()">
-          📋 ${t('orderHistory')}
-        </button>
-        <button class="btn-nav" onclick="renderLanguageScreen()">
-          🌐 ${t('changeLanguage')}
-        </button>
-        ${state.cart.length > 0 ? `
-        <button class="btn-nav" onclick="renderCartScreen()">
-          🛒 <span class="cart-count">${state.cart.length}</span>
-        </button>` : ''}
-      </div>
+  
+  // Use services from config if available, else fallback
+  const services = state.config.services.length > 0 ? state.config.services : [
+    { id: 'archana', name: t('archana'), price: 10, icon: '🪷', details: t('archanaDesc') },
+    { id: 'gheeVizhaku', name: t('gheeVizhaku'), price: 50, icon: '🪔', details: t('gheeVizhakuDesc') },
+    { id: 'coconutVizhaku', name: t('coconutVizhaku'), price: 30, icon: '🥥', details: t('coconutVizhakuDesc') }
+  ];
+
+  const serviceCards = services.map(s => `
+    <div class="service-card" onclick="selectService(${JSON.stringify(s).replace(/"/g, '&quot;')})">
+      <div class="service-icon">${s.icon}</div>
+      <div class="service-name">${t(s.id) || s.name}</div>
+      <div class="service-desc">${t(s.id + 'Desc') || s.details}</div>
+      <div class="service-price">₹${s.price}</div>
     </div>
-    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 40px 20px;">
-      <div class="temple-header">
-        <div class="temple-icon">🕉️</div>
-        <h1>${t('welcome')}</h1>
-        <p>${t('subtitle')}</p>
+  `).join('');
+
+  screen.innerHTML = `
+    <div class="screen-main">
+      <div class="temple-header" style="margin-bottom:8px;">
+        <div class="temple-icon" style="font-size:32px; margin-bottom:4px;">🕉️</div>
+        <h1 style="font-size:1.2rem; margin:0;">${t('welcome')}</h1>
+        <p style="font-size:0.8rem; margin:0; opacity:0.8;">${t('subtitle')}</p>
       </div>
       <div class="section-title">${t('selectService')}</div>
-      <div class="service-grid">
-        <div class="service-card" onclick="selectService('archana')">
-          <div class="service-icon">🪷</div>
-          <div class="service-name">${t('archana')}</div>
-          <div class="service-desc">${t('archanaDesc')}</div>
-          <div class="service-price">${t('pricePerItem')}</div>
-        </div>
-        <div class="service-card" onclick="selectService('gheeVizhaku')">
-          <div class="service-icon">🪔</div>
-          <div class="service-name">${t('gheeVizhaku')}</div>
-          <div class="service-desc">${t('gheeVizhakuDesc')}</div>
-          <div class="service-price">${t('pricePerItem')}</div>
-        </div>
-        <div class="service-card" onclick="selectService('coconutVizhaku')">
-          <div class="service-icon">🥥</div>
-          <div class="service-name">${t('coconutVizhaku')}</div>
-          <div class="service-desc">${t('coconutVizhakuDesc')}</div>
-          <div class="service-price">${t('pricePerItem')}</div>
-        </div>
+      <div class="service-grid" style="margin-top:0;">
+        ${serviceCards}
       </div>
     </div>
   `;
   showScreen('screen-service');
 }
 
-function selectService(service) {
-  state.service = service;
-  speak(getServiceName(service));
+function selectService(serviceObj) {
+  state.service = serviceObj;
   renderEntryScreen();
 }
 
 // ═══════════════════════════════════════════════════════════
-//  SCREEN 3: NAME & STAR ENTRY
+//  SCREEN 2: DEVOTEE DETAILS & PAYMENT (SINGLE PAGE)
 // ═══════════════════════════════════════════════════════════
 function renderEntryScreen() {
   const nakshatras = getNakshatras();
   const nakshatraOptions = nakshatras.map((n, i) =>
-    `<option value="${i}">${n}</option>`
+    `<option value="${n}">${n}</option>`
   ).join('');
+
+  const total = state.cart.reduce((sum, item) => sum + item.price, 0);
 
   const screen = document.getElementById('screen-entry');
   screen.innerHTML = `
-    <div class="nav-bar">
-      <div class="nav-left">
-        <span style="font-size:24px">🙏</span>
-        <span class="nav-title">${t('welcome')}</span>
-      </div>
-      <div class="nav-right">
-        <button class="btn-nav" onclick="renderServiceScreen()">
-          ◀ ${t('changeService')}
-        </button>
-        ${state.cart.length > 0 ? `
-        <button class="btn-nav" onclick="renderCartScreen()">
-          🛒 <span class="cart-count">${state.cart.length}</span>
-        </button>` : ''}
-      </div>
-    </div>
-    <div style="flex:1; display:flex; flex-direction:column; align-items:center; padding: 40px 20px;">
-      <div class="section-title">${t('enterDetails')}</div>
+    <div class="screen-main">
       <div class="split-layout">
-        <div class="split-left">
-          <div class="entry-container" style="max-width:100%;padding:0;">
-            <div class="form-card">
-              <div style="text-align:center; margin-bottom: 24px;">
-                <div class="current-service-badge">
-                  ${getServiceIcon(state.service)} ${getServiceName(state.service)} — ${t('pricePerItem')}
-                </div>
+        <!-- Column 1: Devotee Details -->
+        <div class="split-col">
+          <div class="section-title" style="margin-bottom:8px;">${t('enterDetails')}</div>
+          <button class="voice-order-btn" style="width:100%; margin-bottom:10px; margin-top:0; padding:10px;" onclick="startVoiceOrderFlow()">
+            <span class="voice-icon-pulsing">🎤</span>
+            ${t('voiceOrder')} (Quick Add)
+          </button>
+
+          <div class="form-card">
+            <div style="text-align:center; margin-bottom: 12px;">
+              <div class="current-service-badge">
+                ${state.service.icon} ${enT(state.service.id) || state.service.name} — ₹${state.service.price}
               </div>
-              <div class="form-group">
-                <label for="devotee-name">${t('devoteeName')}</label>
-                <div class="input-wrapper">
-                  <input type="text" id="devotee-name" placeholder="${t('enterName')}" autocomplete="off">
-                  <button class="btn-voice" id="btn-voice-name" onclick="startVoiceInput('name')" title="${t('voiceInput')}">
-                    🎤
-                  </button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="devotee-star">${t('selectStar')}</label>
-                <div class="input-wrapper">
-                  <select id="devotee-star">
-                    <option value="">${t('chooseStar')}</option>
-                    ${nakshatraOptions}
-                  </select>
-                  <button class="btn-voice" id="btn-voice-star" onclick="startVoiceInput('star')" title="${t('voiceInput')}">
-                    🎤
-                  </button>
-                </div>
-              </div>
-              <div class="btn-group" style="margin-top: 32px;">
-                <button class="btn btn-primary btn-lg btn-full" onclick="addToCart()">
-                  🛒 ${t('addToCart')}
-                </button>
-              </div>
-              <div class="btn-group" style="margin-top: 8px;">
-                <button class="btn btn-secondary" onclick="startFullVoiceFlow()" style="flex:1;">
-                  🎙️ ${t('voiceInput')} — ChatGPT Style
+            </div>
+            
+            <div class="form-group" style="margin-bottom:10px;">
+              <label for="devotee-name" style="margin-bottom:5px; font-size:0.85rem;">${t('devoteeName')}</label>
+              <div class="input-wrapper">
+                <input type="text" id="devotee-name" placeholder="${t('enterName')}" autocomplete="off" style="padding:10px 14px; font-size:0.9rem;">
+                <button class="btn-voice" style="width:40px; height:40px; font-size:16px;" onclick="startVoiceInput('name')" title="${t('voiceInput')}">
+                  🎤
                 </button>
               </div>
             </div>
+
+            <div class="form-group" style="margin-bottom:10px;">
+              <label for="devotee-star" style="margin-bottom:5px; font-size:0.85rem;">${t('selectStar')}</label>
+              <div class="input-wrapper">
+                <select id="devotee-star" style="padding:10px 14px; font-size:0.9rem;">
+                  <option value="">${t('chooseStar')}</option>
+                  ${nakshatraOptions}
+                </select>
+                <button class="btn-voice" style="width:40px; height:40px; font-size:16px;" onclick="startVoiceInput('star')" title="${t('voiceInput')}">
+                  🎤
+                </button>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-full" onclick="addDevoteeToCart()" style="padding:10px; font-size:0.9rem;">
+              ➕ ${t('addToCart')}
+            </button>
           </div>
         </div>
-        <div class="split-right">
-          <div class="cart-sidebar" id="cart-sidebar">
-            ${renderCartSidebarContent()}
+
+        <!-- Column 2: Cart -->
+        <div class="split-col">
+           <div class="section-title" style="margin-bottom:8px;">🛒 ${t('cart')}</div>
+           <div class="cart-sidebar">
+            <div class="cart-items-scroll">
+              ${state.cart.length === 0 ? `
+                <div class="cart-sidebar-empty" style="text-align:center; padding:40px 0; color:var(--text-muted);">
+                  <div class="empty-icon" style="font-size:40px; opacity:0.3;">🛒</div>
+                  <p>Empty</p>
+                </div>
+              ` : state.cart.map(item => `
+                <div class="cart-item" style="padding:8px; gap:8px;">
+                  <div class="cart-item-info">
+                    <div class="cart-item-name" style="font-size:0.8rem;">${item.name}</div>
+                    <div class="cart-item-detail" style="font-size:0.65rem;">${item.serviceIcon} ${enT(item.service) || item.serviceName} • ${item.starEn || item.star}</div>
+                  </div>
+                  <span class="cart-item-price" style="font-size:0.8rem;">₹${item.price}</span>
+                  <button class="cart-item-remove" style="font-size:0.8rem;" onclick="removeDevotee(${item.id})">✕</button>
+                </div>
+              `).join('')}
+            </div>
+            ${state.cart.length > 0 ? `
+              <div class="cart-sidebar-total" style="padding:10px 15px;">
+                <span class="total-label" style="font-size:0.8rem;">Total</span>
+                <span class="total-amount" style="font-size:1.1rem;">₹${total}</span>
+              </div>
+            ` : ''}
           </div>
+        </div>
+
+        <!-- Column 3: Payment -->
+        <div class="split-col">
+          <div class="section-title" style="margin-bottom:8px;">💳 Payment</div>
+          ${state.cart.length > 0 ? renderPaymentSection(total) : `
+            <div class="form-card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px; color:var(--text-muted); opacity:0.5;">
+               <div style="font-size:32px;">🛒</div>
+               <p style="font-size:0.85rem;">Add items to pay</p>
+            </div>
+          `}
         </div>
       </div>
     </div>
@@ -294,189 +388,72 @@ function renderEntryScreen() {
   showScreen('screen-entry');
 }
 
-function renderCartSidebarContent() {
-  if (state.cart.length === 0) {
-    return `
-      <div class="cart-sidebar-title">🛒 ${t('cart')} <span style="font-size:0.8rem;font-weight:400;color:var(--text-muted)">(0)</span></div>
-      <div class="cart-sidebar-empty">
-        <div class="empty-icon">🛒</div>
-        <p>${t('cartEmpty')}</p>
-      </div>
-    `;
-  }
-  const total = state.cart.reduce((sum, item) => sum + item.price, 0);
-  const items = state.cart.map(item => `
-    <div class="cart-item">
-      <div class="cart-item-info">
-        <div class="cart-item-name">${item.name}</div>
-        <div class="cart-item-detail">${item.serviceIcon} ${item.serviceName} • ${item.star}</div>
-      </div>
-      <span class="cart-item-price">₹${item.price}</span>
-      <button class="cart-item-remove" onclick="removeFromCartAndRefresh(${item.id})" title="${t('removeItem')}">✕</button>
-    </div>
-  `).join('');
+function renderPaymentSection(total) {
+  const upiId = state.config.upiId || 'temple@upi';
+  const merch = state.config.merchantName || 'Swami Ayyappa Temple';
+  const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merch)}&am=${total}&cu=INR&tn=${encodeURIComponent('Offering')}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiLink)}`;
+
   return `
-    <div class="cart-sidebar-title">🛒 ${t('cart')} <span style="font-size:0.8rem;font-weight:400;color:var(--text-muted)">(${state.cart.length})</span></div>
-    ${items}
-    <div class="cart-sidebar-total">
-      <span class="total-label">${t('grandTotal')}</span>
-      <span class="total-amount">₹${total}</span>
-    </div>
-    <div class="btn-group" style="margin-top:16px;">
-      <button class="btn btn-success btn-full" onclick="renderCartScreen()">
-        📄 ${t('proceedToPay')}
-      </button>
+    <div class="form-card" style="text-align:center; height:100%; display:flex; flex-direction:column; justify-content:center; padding:12px; margin-top:0; max-width:320px; margin-left:auto; margin-right:auto;">
+       <div>
+         <h4 style="margin-bottom:10px; color:var(--primary-dark); font-size:0.9rem;">Secure UPI Payment</h4>
+         <div class="upi-qr" style="max-width:140px; margin:0 auto; border:1px solid var(--border-light); padding:5px; background:white;">
+            <img src="${qrUrl}" alt="QR" style="width:100%;">
+         </div>
+         <div style="margin-top:8px; font-size:0.8rem; font-weight:600; color:var(--text-muted);">${upiId}</div>
+       </div>
+       <button class="btn btn-success btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:10px; padding:12px; font-size:0.95rem;">
+         💳 Pay & Print Invoice
+       </button>
     </div>
   `;
 }
 
-function refreshCartSidebar() {
-  const sidebar = document.getElementById('cart-sidebar');
-  if (sidebar) sidebar.innerHTML = renderCartSidebarContent();
-}
+function addDevoteeToCart() {
+  const name= document.getElementById('devotee-name').value.trim();
+  const star= document.getElementById('devotee-star').value;
+  const starIdx = document.getElementById('devotee-star').selectedIndex;
+  const starEn = (starIdx > 0) ? NAKSHATRAS.en[starIdx - 1] : star;
 
-function removeFromCartAndRefresh(id) {
-  state.cart = state.cart.filter(item => item.id !== id);
-  refreshCartSidebar();
-}
-
-
-function addToCart() {
-  const nameInput = document.getElementById('devotee-name');
-  const starSelect = document.getElementById('devotee-star');
-
-  const name = nameInput.value.trim();
-  const starIndex = starSelect.value;
-
-  if (!name) {
-    showToast(t('speakName'), 'error');
-    nameInput.focus();
+  if(!name || !star) {
+    showToast('Name and Star required', 'error');
     return;
   }
-  if (starIndex === '') {
-    showToast(t('speakStar'), 'error');
-    starSelect.focus();
-    return;
-  }
-
-  const nakshatras = getNakshatras();
-  const star = nakshatras[parseInt(starIndex)];
-
   state.cart.push({
     id: state.nextId++,
-    service: state.service,
-    serviceName: getServiceName(state.service),
-    serviceIcon: getServiceIcon(state.service),
+    service: state.service.id,
+    serviceName: state.service.name,
+    serviceIcon: state.service.icon,
     name: name,
     star: star,
-    price: PRICE_PER_ITEM
+    starEn: starEn,
+    price: state.service.price
   });
-
-  const msg = `${name} - ${star} ${t('confirmAdd')}`;
-  showToast(msg);
-  speak(msg);
-
-  // Reset form
-  nameInput.value = '';
-  starSelect.value = '';
-  nameInput.focus();
-
-  // Update cart sidebar without re-rendering entire screen
-  refreshCartSidebar();
+  renderEntryScreen();
 }
 
-// ═══════════════════════════════════════════════════════════
-//  SCREEN 4: CART
-// ═══════════════════════════════════════════════════════════
-function renderCartScreen() {
-  const screen = document.getElementById('screen-cart');
-  const total = state.cart.reduce((sum, item) => sum + item.price, 0);
+function removeDevotee(id) {
+  state.cart = state.cart.filter(c => c.id !== id);
+  renderEntryScreen();
+}
 
-  let cartContent = '';
-  if (state.cart.length === 0) {
-    cartContent = `
-      <div class="cart-empty">
-        <div class="empty-icon">🛒</div>
-        <p>${t('cartEmpty')}</p>
-      </div>
-    `;
-  } else {
-    const rows = state.cart.map((item, idx) => `
-      <tr>
-        <td>${idx + 1}</td>
-        <td>${item.serviceIcon} ${item.serviceName}</td>
-        <td><strong>${item.name}</strong></td>
-        <td>${item.star}</td>
-        <td>₹${item.price}</td>
-        <td>
-          <button class="btn btn-danger" onclick="removeFromCart(${item.id})">
-            ${t('removeItem')} ✕
-          </button>
-        </td>
-      </tr>
-    `).join('');
-
-    cartContent = `
-      <div class="cart-badge">🛒 ${state.cart.length} ${t('itemsInCart')}</div>
-      <div style="overflow-x: auto;">
-        <table class="cart-table">
-          <thead>
-            <tr>
-              <th>${t('srNo')}</th>
-              <th>${t('service')}</th>
-              <th>${t('name')}</th>
-              <th>${t('star')}</th>
-              <th>${t('price')}</th>
-              <th>${t('actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
-      </div>
-      <div class="cart-total-row">
-        <span class="cart-total-label">${t('grandTotal')}</span>
-        <span class="cart-total-amount">₹${total}</span>
-      </div>
-    `;
-  }
-
-  screen.innerHTML = `
-    <div class="nav-bar">
-      <div class="nav-left">
-        <span style="font-size:24px">🛒</span>
-        <span class="nav-title">${t('cart')}</span>
-      </div>
-      <div class="nav-right">
-        <button class="btn-nav" onclick="renderServiceScreen()">
-          ◀ ${t('changeService')}
-        </button>
-      </div>
-    </div>
-    <div style="flex:1; display:flex; flex-direction:column; align-items:center; padding: 40px 20px;">
-      <div class="section-title">${t('cart')}</div>
-      <div class="cart-container">
-        <div class="cart-card">
-          ${cartContent}
-          <div class="btn-group" style="margin-top: 24px;">
-            <button class="btn btn-secondary" onclick="renderServiceScreen()">
-              ➕ ${t('addMore')}
-            </button>
-            ${state.cart.length > 0 ? `
-            <button class="btn btn-danger" onclick="clearCart()">
-              🗑️ ${t('clearCart')}
-            </button>
-            <button class="btn btn-success btn-lg" onclick="generateInvoice()">
-              📄 ${t('proceedToPay')}
-            </button>
-            ` : ''}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  showScreen('screen-cart');
+async function generateInvoiceAndPrint() {
+  if(state.cart.length === 0) return;
+  
+  // Save to DB
+  state.invoiceNo = generateInvoiceNo();
+  const date = formatDate();
+  const orderData = {
+    invoiceNo: state.invoiceNo,
+    date: date,
+    items: state.cart,
+    totalAmount: state.cart.reduce((s,i)=>s+i.price,0),
+    paymentStatus: 'paid'
+  };
+  
+  await saveOrder(orderData);
+  showInvoiceModal();
 }
 
 function removeFromCart(id) {
@@ -490,141 +467,109 @@ function clearCart() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  SCREEN 5: INVOICE & PAYMENT
+//  SCREEN 3: INVOICE & PRINT
 // ═══════════════════════════════════════════════════════════
-function generateInvoice() {
-  state.invoiceNo = generateInvoiceNo();
-  const total = state.cart.reduce((sum, item) => sum + item.price, 0);
-  const date = formatDate();
-  const upiLink = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${total}&cu=INR&tn=${encodeURIComponent('Temple Offering - ' + state.invoiceNo)}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+function showInvoiceModal(historicalOrder = null) {
+  const items = historicalOrder ? historicalOrder.items : state.cart;
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+  const date = historicalOrder ? historicalOrder.date : formatDate();
+  const invoiceNo = historicalOrder ? historicalOrder.invoiceNo : state.invoiceNo;
 
-  // ── Save order to database ──
-  const orderData = {
-    invoiceNo: state.invoiceNo,
-    date: date,
-    dateRaw: new Date().toISOString(),
-    language: state.language,
-    items: state.cart.map(item => ({
-      service: item.service,
-      serviceName: item.serviceName,
-      serviceIcon: item.serviceIcon,
-      name: item.name,
-      star: item.star,
-      price: item.price
-    })),
-    totalAmount: total,
-    itemCount: state.cart.length,
-    paymentStatus: 'pending'
-  };
-
-  saveOrder(orderData).then(docId => {
-    if (docId) {
-      console.log('📋 Order saved with ID:', docId);
-    }
-  }).catch(err => {
-    console.error('Order save error:', err);
-  });
-
-  const rows = state.cart.map((item, idx) => `
+  const rows = items.map((item, idx) => `
     <tr>
-      <td>${idx + 1}</td>
-      <td>${item.serviceIcon} ${item.serviceName}</td>
-      <td>${item.name}</td>
-      <td>${item.star}</td>
-      <td style="text-align:right">₹${item.price}</td>
+      <td style="padding:6px;">${idx + 1}</td>
+      <td style="padding:6px;">${item.serviceIcon} ${enT(item.service) || item.serviceName}</td>
+      <td style="padding:6px;">${item.name}</td>
+      <td style="padding:6px;">${item.starEn || getEnglishStarName(item.star)}</td>
+      <td style="padding:6px; text-align:right">₹${item.price}</td>
     </tr>
   `).join('');
 
-  const screen = document.getElementById('screen-invoice');
-  screen.innerHTML = `
-    <div class="nav-bar no-print">
-      <div class="nav-left">
-        <span style="font-size:24px">📄</span>
-        <span class="nav-title">${t('invoice')}</span>
+  const modalOverlay = document.getElementById('invoice-modal-overlay');
+  const modalContent = document.getElementById('invoice-modal-content');
+
+  if (!modalOverlay || !modalContent) return;
+
+  modalContent.innerHTML = `
+    <div class="invoice-container" style="max-width:100%; padding:0;">
+      <div class="invoice-card" id="invoice-content" style="box-shadow:none; border:none; padding:10px;">
+        <div class="invoice-header" style="margin-bottom:10px;">
+          <div style="font-size: 32px; margin-bottom: 4px;">🙏</div>
+          <h2 style="font-size:1.05rem;">${enT('invoiceTitle')}</h2>
+          <div class="invoice-subtitle" style="font-size:0.75rem;">Sabarimala Sannidhanam Online</div>
+        </div>
+
+        <div class="invoice-meta" style="margin-bottom:10px; padding:6px 12px; background:var(--bg-secondary); border-radius:8px; display:flex; justify-content:space-between;">
+          <div style="text-align:left;">
+            <div class="meta-label" style="font-size:0.65rem; color:var(--text-muted);">${enT('invoiceNo')}</div>
+            <div class="meta-value" style="font-size:0.85rem; font-weight:700;">${invoiceNo}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="meta-label" style="font-size:0.65rem; color:var(--text-muted);">${enT('date')}</div>
+            <div class="meta-value" style="font-size:0.85rem; font-weight:700;">${date}</div>
+          </div>
+        </div>
+
+        <table class="invoice-table" style="width:100%; border-collapse:collapse; margin-bottom:10px; font-size:0.85rem;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="padding:6px; text-align:left;">${enT('slNo')}</th>
+              <th style="padding:6px; text-align:left;">${enT('service')}</th>
+              <th style="padding:6px; text-align:left;">${enT('name')}</th>
+              <th style="padding:6px; text-align:left;">${enT('star')}</th>
+              <th style="padding:6px; text-align:right;">${enT('price')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+
+        <div class="invoice-total" style="padding:10px 0; border-top:1px solid var(--primary); text-align:right;">
+          <div class="total-text" style="font-size:0.9rem; color:var(--text-muted);">${enT('grandTotal')} (Paid)</div>
+          <div class="total-amount" style="font-size:1.6rem; font-weight:800; color:var(--secondary);">₹${total}</div>
+        </div>
       </div>
-      <div class="nav-right">
-        <button class="btn-nav" onclick="renderCartScreen()">
-          ◀ ${t('cart')}
+
+      <div class="btn-group no-print" style="margin-top:15px; display:flex; gap:10px; width:100%;">
+        <button class="btn btn-primary" onclick="printInvoice()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
+          🖨️ Print Receipt
+        </button>
+        <button class="btn btn-secondary" onclick="closeInvoiceModal()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
+          🏠 Back to Home
         </button>
       </div>
     </div>
-    <div style="flex:1; display:flex; flex-direction:column; align-items:center; padding: 40px 20px;">
-      <div class="invoice-container">
-        <div class="invoice-card" id="invoice-content">
-          <div class="invoice-header">
-            <div style="font-size: 40px; margin-bottom: 8px;">🙏</div>
-            <h2>${t('invoiceTitle')}</h2>
-            <div class="invoice-subtitle">Sabarimala Sannidhanam</div>
-          </div>
-
-          <div class="invoice-meta">
-            <div>
-              <div class="meta-label">${t('invoiceNo')}</div>
-              <div class="meta-value">${state.invoiceNo}</div>
-            </div>
-            <div>
-              <div class="meta-label">${t('date')}</div>
-              <div class="meta-value">${date}</div>
-            </div>
-          </div>
-
-          <table class="invoice-table">
-            <thead>
-              <tr>
-                <th>${t('slNo')}</th>
-                <th>${t('service')}</th>
-                <th>${t('name')}</th>
-                <th>${t('star')}</th>
-                <th style="text-align:right">${t('price')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows}
-            </tbody>
-          </table>
-
-          <div class="invoice-total">
-            <div class="total-text">${t('grandTotal')}</div>
-            <div class="total-amount">₹${total}</div>
-          </div>
-        </div>
-
-        <div class="upi-section no-print">
-          <h3>💳 ${t('payViaUPI')}</h3>
-          <p style="color: var(--text-light); margin-bottom: 16px;">${t('scanToPay')}</p>
-          <div class="upi-qr">
-            <img src="${qrUrl}" alt="UPI QR Code" id="upi-qr-img">
-          </div>
-          <div class="upi-details">
-            <div>${t('upiId')}</div>
-            <div class="upi-id-display">${UPI_ID}</div>
-            <div style="margin-top: 8px;">${t('amount')}: <strong>₹${total}</strong></div>
-          </div>
-          <div class="btn-group" style="margin-top: 20px;">
-            <a href="${upiLink}" class="btn btn-success btn-lg" style="text-decoration:none;">
-              📱 ${t('payViaUPI')}
-            </a>
-          </div>
-        </div>
-
-        <div class="thank-you no-print">
-          <p>🙏 ${t('thankYou')}</p>
-        </div>
-
-        <div class="btn-group no-print" style="margin-top: 24px;">
-          <button class="btn btn-primary btn-lg" onclick="printInvoice()">
-            🖨️ ${t('printInvoice')}
-          </button>
-          <button class="btn btn-secondary btn-lg" onclick="startNewOrder()">
-            🏠 ${t('backToHome')}
-          </button>
-        </div>
-      </div>
-    </div>
   `;
-  showScreen('screen-invoice');
-  showToast('✅ ' + t('orderSaved'));
+  modalOverlay.classList.add('active');
+  if (!historicalOrder) {
+    showToast('Order Processed Successfully ✅');
+  }
+}
+
+function closeInvoiceModal() {
+  const modalOverlay = document.getElementById('invoice-modal-overlay');
+  if (modalOverlay) modalOverlay.classList.remove('active');
+  
+  // If we were in the middle of a checkout (cart not empty), clear and reset
+  if (state.cart.length > 0) {
+    state.cart = [];
+    state.service = null;
+    state.invoiceNo = null;
+    renderServiceScreen();
+  }
+}
+
+function renderInvoiceScreen() {
+  // Deprecated - using showInvoiceModal instead
+  showInvoiceModal();
+}
+
+function resetFlow() {
+  state.cart = [];
+  state.service = null;
+  state.invoiceNo = null;
+  renderServiceScreen();
 }
 
 function printInvoice() {
@@ -647,21 +592,12 @@ async function renderOrdersScreen() {
 
   // Show loading state
   screen.innerHTML = `
-    <div class="nav-bar">
-      <div class="nav-left">
-        <span style="font-size:24px">📋</span>
-        <span class="nav-title">${t('orderHistory')}</span>
-      </div>
-      <div class="nav-right">
-        <button class="btn-nav" onclick="renderServiceScreen()">
-          ◀ ${t('backToHome')}
-        </button>
-      </div>
-    </div>
-    <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;">
-      <div style="text-align:center; color:var(--text-muted);">
-        <div style="font-size:40px; margin-bottom:12px;">⏳</div>
-        <p>${t('loading')}...</p>
+    <div class="screen-main">
+      <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+        <div style="text-align:center; color:var(--text-muted);">
+          <div style="font-size:40px; margin-bottom:12px;">⏳</div>
+          <p>${enT('loading')}...</p>
+        </div>
       </div>
     </div>
   `;
@@ -669,6 +605,7 @@ async function renderOrdersScreen() {
 
   // Fetch orders
   const orders = await getOrders(100);
+  state.recentOrders = orders; // Cache for re-printing
 
   // Calculate summary
   const totalOrders = orders.length;
@@ -680,14 +617,14 @@ async function renderOrdersScreen() {
     ordersContent = `
       <div class="cart-empty">
         <div class="empty-icon">📋</div>
-        <p>${t('noOrders')}</p>
+        <p>${enT('noOrders')}</p>
       </div>
     `;
   } else {
     const orderRows = orders.map((order, idx) => {
       const itemsList = (order.items || []).map(item =>
         `<div style="font-size:0.85rem; color:var(--text-light); padding:2px 0;">
-          ${item.serviceIcon || '🕉️'} ${item.name} — ${item.star} (${item.serviceName})
+          ${item.serviceIcon || '🕉️'} ${item.name} — ${item.starEn || getEnglishStarName(item.star)} (${enT(item.service) || item.serviceName})
         </div>`
       ).join('');
 
@@ -706,6 +643,11 @@ async function renderOrdersScreen() {
               ${order.paymentStatus === 'paid' ? '✅ Paid' : '⏳ Pending'}
             </span>
           </td>
+          <td>
+            <button class="btn btn-primary" style="padding:6px 12px; font-size:0.75rem;" onclick="showInvoiceModal(state.recentOrders[${idx}])">
+              🖨️ Re-print
+            </button>
+          </td>
         </tr>
       `;
     }).join('');
@@ -715,29 +657,30 @@ async function renderOrdersScreen() {
         <div class="summary-card">
           <div class="summary-icon">📋</div>
           <div class="summary-value">${totalOrders}</div>
-          <div class="summary-label">${t('totalOrders')}</div>
+          <div class="summary-label">${enT('totalOrders')}</div>
         </div>
         <div class="summary-card">
           <div class="summary-icon">🙏</div>
           <div class="summary-value">${totalItems}</div>
-          <div class="summary-label">${t('totalOfferings')}</div>
+          <div class="summary-label">${enT('totalOfferings')}</div>
         </div>
         <div class="summary-card">
           <div class="summary-icon">💰</div>
           <div class="summary-value">₹${totalRevenue}</div>
-          <div class="summary-label">${t('totalRevenue')}</div>
+          <div class="summary-label">${enT('totalRevenue')}</div>
         </div>
       </div>
       <div style="overflow-x: auto;">
         <table class="cart-table orders-table">
           <thead>
             <tr>
-              <th>${t('srNo')}</th>
-              <th>${t('invoiceNo')}</th>
-              <th>${t('offerings')}</th>
-              <th>${t('items')}</th>
-              <th style="text-align:right;">${t('amount')}</th>
-              <th>${t('status')}</th>
+              <th>${enT('srNo')}</th>
+              <th>${enT('invoiceNo')}</th>
+              <th>${enT('offerings')}</th>
+              <th>${enT('items')}</th>
+              <th style="text-align:right;">${enT('amount')}</th>
+              <th>${enT('status')}</th>
+              <th>${enT('actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -760,7 +703,7 @@ async function renderOrdersScreen() {
         </button>
       </div>
     </div>
-    <div style="flex:1; display:flex; flex-direction:column; align-items:center; padding: 40px 20px;">
+    <div class="screen-main">
       <div class="section-title">${t('orderHistory')}</div>
       <div class="cart-container" style="max-width:1000px;">
         <div class="cart-card">
@@ -772,7 +715,7 @@ async function renderOrdersScreen() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  VOICE RECOGNITION & SYNTHESIS
+//  VOICE RECOGNITION & SYNTHESIS (Sarvam.ai Powered)
 // ═══════════════════════════════════════════════════════════
 
 // Check support
@@ -780,10 +723,31 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 let recognition = null;
 let isListening = false;
 
-// ── Google Cloud STT Config ──
-// If this key is provided, the app will try Cloud STT first and fallback to Web Speech API
-let GOOGLE_CLOUD_API_KEY = localStorage.getItem('ayyappa_gcp_api_key') || '';
+// ── Voice Engine API Keys ──
+let SARVAM_API_KEY = '';
+let GOOGLE_API_KEY = '';
+let OPENAI_API_KEY = '';
+let REVERIE_API_KEY = '';
+let REVERIE_APP_ID = '';
 let mediaRecorder = null;
+
+// Sarvam.ai language codes (BCP-47)
+const SARVAM_LANG_CODES = {
+  en: 'en-IN',
+  ta: 'ta-IN',
+  te: 'te-IN',
+  ml: 'ml-IN',
+  kn: 'kn-IN'
+};
+
+// Sarvam TTS speaker voices - 'meera' is the high-quality multilingual female voice
+const SARVAM_VOICES = {
+  en: 'meera',
+  ta: 'meera',
+  te: 'meera',
+  ml: 'meera',
+  kn: 'meera'
+};
 
 
 function setupVoiceOverlay() {
@@ -799,6 +763,7 @@ const PREFERRED_VOICE_PATTERNS = {
   'ta': ['Google தமிழ்', 'Google Tamil', 'Microsoft Pattara', 'Pattara', 'Tamil', 'தமிழ்'],
   'te': ['Google తెలుగు', 'Google Telugu', 'Microsoft Shruti', 'Shruti', 'Telugu', 'తెలుగు'],
   'ml': ['Google മലയാളം', 'Google Malayalam', 'Microsoft Rajeev', 'Rajeev', 'Malayalam', 'മലയാളം'],
+  'kn': ['Google ಕನ್ನಡ', 'Google Kannada', 'Microsoft Sapna', 'Sapna', 'Kannada', 'ಕನ್ನಡ'],
   'en': ['Google US English', 'Google UK English Female', 'Google India English', 'Microsoft Ravi', 'Microsoft Heera', 'Ravi', 'Heera', 'English India']
 };
 
@@ -807,7 +772,8 @@ const SPEECH_RATE = {
   'en': 0.95,
   'ta': 0.85,
   'te': 0.85,
-  'ml': 0.82
+  'ml': 0.82,
+  'kn': 0.85
 };
 
 function loadAndCacheVoices() {
@@ -899,32 +865,168 @@ function getBestVoice(langCode) {
     null;
 }
 
+// ── Sarvam TTS Audio Player ──
+let _sarvamAudioPlayer = null;
+
 function speak(text) {
-  if (!('speechSynthesis' in window)) return;
-
-  // Cancel any ongoing speech
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  const langCode = LANG_CODES[state.language] || 'en-IN';
-  const langPrefix = langCode.split('-')[0];
-  utterance.lang = langCode;
-  utterance.rate = SPEECH_RATE[langPrefix] || 0.9;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-
-  // Use the best native voice
-  const bestVoice = getBestVoice(langCode);
-  if (bestVoice) {
-    utterance.voice = bestVoice;
+  // Clear any existing browser speech to avoid overlap
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  
+  // If Sarvam API key is available, use Sarvam TTS
+  if (SARVAM_API_KEY) {
+    return speakWithSarvam(text);
   }
 
+  // Fallback to browser speechSynthesis
+  return speakWithBrowser(text);
+}
+
+async function speakWithSarvam(text) {
+  try {
+    const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
+    const speaker = SARVAM_VOICES[state.language] || 'meera';
+
+    const res = await fetch('https://api.sarvam.ai/text-to-speech', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-subscription-key': SARVAM_API_KEY
+      },
+      body: JSON.stringify({
+        text: text,
+        target_language_code: langCode,
+        speaker: speaker,
+        model: 'bulbul:v2'
+      })
+    });
+
+    if (!res.ok) {
+      console.warn('Sarvam TTS API call failed');
+      return null; // Let the caller handle fallback
+    }
+
+    const data = await res.json();
+    if (data.audios && data.audios[0]) {
+      if (_sarvamAudioPlayer) {
+        _sarvamAudioPlayer.pause();
+        _sarvamAudioPlayer = null;
+      }
+      _sarvamAudioPlayer = new Audio('data:audio/wav;base64,' + data.audios[0]);
+      _sarvamAudioPlayer.play();
+      return _sarvamAudioPlayer;
+    }
+    return null;
+  } catch (e) {
+    console.warn('Sarvam TTS error:', e.message);
+    return null;
+  }
+}
+
+async function startVoiceOrderFlow() {
+  if (!SpeechRecognition && !SARVAM_API_KEY) {
+    showToast(t('noVoiceSupport'), 'error');
+    return;
+  }
+
+  // Ensure we are on offering screen
+  const entryScreen = document.getElementById('screen-entry');
+  if (!entryScreen || !entryScreen.classList.contains('active')) {
+    showToast('Voice order is only available on the Offering screen', 'warning');
+    return;
+  }
+
+  const overlay = document.getElementById('voice-overlay');
+  const statusEl = document.getElementById('voice-status');
+  const promptEl = document.getElementById('voice-prompt');
+  const resultEl = document.getElementById('voice-result');
+
+  overlay.classList.add('active');
+  resultEl.textContent = '';
+  
+  try {
+    // 1. Ask for Name
+    statusEl.textContent = t('voiceSpeaking');
+    promptEl.textContent = t('voicePromptName');
+    await speakAndWait(t('voicePromptName'));
+    
+    statusEl.textContent = t('voiceListening');
+    const name = await listenForSpeech();
+    
+    if (!name) {
+      statusEl.textContent = '❌ No name detected';
+      setTimeout(() => closeVoiceOverlay(), 1200);
+      return;
+    }
+    
+    document.getElementById('devotee-name').value = name;
+    statusEl.textContent = `${t('voiceConfirmName')}: ${name}`;
+    await speakAndWait(`${t('voiceConfirmName')} ${name}`);
+
+    // 2. Ask for Star - with retry loop
+    let starRecognized = false;
+    let attempts = 0;
+    while (!starRecognized && attempts < 3) {
+      statusEl.textContent = t('voiceSpeaking');
+      resultEl.textContent = ''; // Clear previous transcript
+      promptEl.textContent = attempts === 0 ? t('voicePromptStar') : t('voiceRetryStar');
+      await speakAndWait(promptEl.textContent);
+      
+      statusEl.textContent = t('voiceListening');
+      const starInput = await listenForSpeech();
+      
+      if (starInput) {
+        const matchedIndex = findNakshatraIndexUniversal(starInput);
+        if (matchedIndex >= 0) {
+          const nakshatrasInCurrentLang = getNakshatras();
+          const starName = nakshatrasInCurrentLang[matchedIndex];
+          document.getElementById('devotee-star').value = starName;
+          statusEl.textContent = `${t('voiceConfirmStar')}: ${starName}`;
+          await speakAndWait(`${t('voiceConfirmStar')} ${starName}`);
+          
+          starRecognized = true;
+          // 3. Auto Add to Cart
+          addDevoteeToCart();
+          statusEl.textContent = '✅ Added to Cart';
+          await speakAndWait(t('confirmAdd'));
+          closeVoiceOverlay(); // Close immediately on success
+          return;
+        } else {
+          statusEl.textContent = t('voiceStarNotRecognized');
+          await speakAndWait(t('voiceStarNotRecognized'));
+          attempts++;
+        }
+      } else {
+        attempts++;
+      }
+    }
+
+    if (!starRecognized) {
+      statusEl.textContent = '❌ Could not recognize star';
+      setTimeout(() => closeVoiceOverlay(), 1500);
+    }
+  } catch (e) {
+    console.error('Voice Order Flow Error:', e);
+    statusEl.textContent = '❌ Error occurred';
+    closeVoiceOverlay();
+  }
+}
+
+function speakWithBrowser(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.volume = 1.0; // MAX Volume for crowded places
+  const langCode = LANG_CODES[state.language] || 'en-IN';
+  utterance.lang = langCode;
+  utterance.rate = 0.95; // Slightly slower for clarity
+  const bestVoice = getBestVoice(langCode);
+  if (bestVoice) utterance.voice = bestVoice;
   window.speechSynthesis.speak(utterance);
   return utterance;
 }
 
 function startVoiceInput(field) {
-  if (!SpeechRecognition && !GOOGLE_CLOUD_API_KEY) {
+  if (!SpeechRecognition && !SARVAM_API_KEY) {
     showToast(t('noVoiceSupport'), 'error');
     return;
   }
@@ -963,8 +1065,8 @@ function startVoiceInput(field) {
 function beginRecognition(field) {
   if (isListening) return;
 
-  if (GOOGLE_CLOUD_API_KEY) {
-    startCloudSTT(field);
+  if (SARVAM_API_KEY) {
+    startSarvamSTT(field);
   } else {
     startWebSpeechAPI(field);
   }
@@ -979,14 +1081,15 @@ function blobToBase64(blob) {
   });
 }
 
-async function startCloudSTT(field) {
+// ── Sarvam.ai Speech-to-Text (Saaras v3) ──
+async function startSarvamSTT(field) {
   const statusEl = document.getElementById('voice-status');
   const resultEl = document.getElementById('voice-result');
   isListening = true;
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
     const audioChunks = [];
 
     mediaRecorder.ondataavailable = event => {
@@ -994,35 +1097,43 @@ async function startCloudSTT(field) {
     };
 
     mediaRecorder.onstop = async () => {
-      statusEl.textContent = 'Processing...';
-      const audioBlob = new Blob(audioChunks);
-      const base64Audio = await blobToBase64(audioBlob);
+      statusEl.textContent = t('processing');
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
 
       try {
-        const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_CLOUD_API_KEY}`, {
+        // Sarvam STT uses multipart form-data
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('model', 'saaras:v2');
+        formData.append('language_code', langCode);
+
+        const response = await fetch('https://api.sarvam.ai/speech-to-text/transcribe', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            config: {
-              encoding: 'WEBM_OPUS',
-              languageCode: LANG_CODES[state.language] || 'en-IN',
-            },
-            audio: { content: base64Audio.split(',')[1] }
-          })
+          headers: {
+            'api-subscription-key': SARVAM_API_KEY
+          },
+          body: formData
         });
 
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          console.warn('Sarvam STT error:', errData);
+          throw new Error(errData.error || `HTTP ${response.status}`);
+        }
+
         const data = await response.json();
-        if (data.results && data.results.length > 0) {
-          const transcript = data.results[0].alternatives[0].transcript;
-          resultEl.textContent = transcript;
-          processVoiceResult(field, transcript.trim());
+        if (data.transcript) {
+          resultEl.textContent = data.transcript;
+          processVoiceResult(field, data.transcript.trim());
+          console.log('🎯 Sarvam STT result:', data.transcript);
         } else {
-          console.warn("Cloud STT returned no results, falling back");
+          console.warn('Sarvam STT: no transcript, falling back');
           isListening = false;
           startWebSpeechAPI(field);
         }
       } catch (err) {
-        console.error("Cloud STT failed:", err);
+        console.error('Sarvam STT failed:', err.message, '- falling back to Web Speech');
         isListening = false;
         startWebSpeechAPI(field);
       }
@@ -1031,15 +1142,16 @@ async function startCloudSTT(field) {
     mediaRecorder.start();
     statusEl.textContent = t('voiceListening');
 
+    // Record for 5 seconds (Sarvam REST supports up to 30s)
     setTimeout(() => {
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
         stream.getTracks().forEach(track => track.stop());
       }
-    }, 4000);
+    }, 5000);
 
   } catch (err) {
-    console.error("Mic access failed:", err);
+    console.error('Mic access failed:', err);
     isListening = false;
     startWebSpeechAPI(field);
   }
@@ -1085,12 +1197,76 @@ function startWebSpeechAPI(field) {
   };
 
   try {
+    const stopBtn = document.getElementById('voice-stop-btn');
+    if (stopBtn) stopBtn.style.display = 'block';
+
     recognition.start();
     statusEl.textContent = t('voiceListening');
   } catch (e) {
     console.error('Failed to start recognition:', e);
     isListening = false;
   }
+}
+
+function stopCurrentRecording() {
+  const stopBtn = document.getElementById('voice-stop-btn');
+  if (stopBtn) stopBtn.style.display = 'none';
+
+  if (recognition) {
+    try { recognition.stop(); } catch (e) { }
+  }
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    try { mediaRecorder.stop(); } catch (e) { }
+  }
+  if (window._audioContext) {
+    try { window._audioContext.close(); window._audioContext = null; } catch (e) { }
+  }
+  const volBar = document.getElementById('volume-bar');
+  if (volBar) volBar.style.width = '0%';
+  isListening = false;
+}
+
+function startVolumeMeter(stream) {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    window._audioContext = audioContext;
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const volBar = document.getElementById('volume-bar');
+
+    function update() {
+      if (!isListening || !window._audioContext) return;
+      analyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+      let average = sum / bufferLength;
+      
+      // Scale to 100%
+      let vol = Math.min(100, Math.pow(average / 128, 0.5) * 100);
+      if (volBar) volBar.style.width = vol + '%';
+      requestAnimationFrame(update);
+    }
+    update();
+  } catch (e) { console.warn('Volume meter failed:', e); }
+}
+
+function getSupportedMimeType() {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4',
+    'audio/aac'
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return '';
 }
 
 function processVoiceResult(field, transcript) {
@@ -1106,14 +1282,15 @@ function processVoiceResult(field, transcript) {
     speak(`${t('voiceConfirmName')} ${transcript}`);
     setTimeout(() => closeVoiceOverlay(), 2000);
   } else if (field === 'star') {
-    const nakshatras = getNakshatras();
-    const matchedIndex = findBestMatch(transcript, nakshatras);
+    const matchedIndex = findNakshatraIndexUniversal(transcript);
     const starSelect = document.getElementById('devotee-star');
 
     if (matchedIndex >= 0 && starSelect) {
-      starSelect.value = matchedIndex.toString();
-      statusEl.textContent = `${t('voiceConfirmStar')}: ${nakshatras[matchedIndex]}`;
-      speak(`${t('voiceConfirmStar')} ${nakshatras[matchedIndex]}`);
+      const nakshatrasInCurrentLang = getNakshatras();
+      const starName = nakshatrasInCurrentLang[matchedIndex];
+      starSelect.value = starName; // Now matches <option value="Name">
+      statusEl.textContent = `${t('voiceConfirmStar')}: ${starName}`;
+      speak(`${t('voiceConfirmStar')} ${starName}`);
     } else {
       statusEl.textContent = transcript;
     }
@@ -1121,31 +1298,65 @@ function processVoiceResult(field, transcript) {
   }
 }
 
+// Common aliases for English recognition to handle STT variations
+const NAKSHATRA_ALIASES = {
+  "aswini": 0, "ashwin": 0, "aaswini": 0,
+  "barani": 1, "bharani": 1,
+  "krithika": 2, "kritika": 2, "karthika": 2,
+  "rohini": 3,
+  "mrigashira": 4, "mrigashirsham": 4,
+  "athira": 5, "ardhra": 5, "ardra": 5,
+  "punarvasu": 6,
+  "poosam": 7, "pushyam": 7, "pushya": 7,
+  "aayilyam": 8, "ashlesha": 8, "aslesha": 8,
+  "makam": 9, "magha": 9,
+  "pooram": 10, "purva phalguni": 10,
+  "uthram": 11, "uttara phalguni": 11,
+  "hastham": 12, "hastam": 12, "hasta": 12,
+  "chithirai": 13, "chitra": 13,
+  "swathi": 14, "swati": 14,
+  "vishakam": 15, "vishakha": 15,
+  "anusham": 16, "anuradha": 16,
+  "kettai": 17, "jyeshtha": 17,
+  "moolam": 18, "moola": 18,
+  "pooradam": 19, "purva ashadha": 19,
+  "uthiradam": 20, "uttara ashadha": 20,
+  "thiruvonam": 21, "shravana": 21,
+  "avittam": 22, "dhanishta": 22,
+  "shathayam": 23, "shatabhisha": 23,
+  "poorattathi": 24, "purva bhadrapada": 24,
+  "uthrattathi": 25, "uttara bhadrapada": 25,
+  "revathi": 26, "revati": 26
+};
+
 function findBestMatch(input, options) {
   const normalizedInput = input.toLowerCase().trim();
 
-  // Exact match
-  let idx = options.findIndex(o => o.toLowerCase() === normalizedInput);
+  // 1. Check direct aliases first (highest priority)
+  if (NAKSHATRA_ALIASES[normalizedInput] !== undefined) {
+    return NAKSHATRA_ALIASES[normalizedInput];
+  }
+
+  // 2. Exact match
+  let idx = options.findIndex(o => o.toLowerCase().trim() === normalizedInput);
   if (idx >= 0) return idx;
 
-  // Starts with match
-  idx = options.findIndex(o => o.toLowerCase().startsWith(normalizedInput));
+  // 3. Starts with match
+  idx = options.findIndex(o => o.toLowerCase().startsWith(normalizedInput) || normalizedInput.startsWith(o.toLowerCase()));
   if (idx >= 0) return idx;
 
-  // Contains match
-  idx = options.findIndex(o => o.toLowerCase().includes(normalizedInput));
+  // 4. Contains match
+  idx = options.findIndex(o => o.toLowerCase().includes(normalizedInput) || normalizedInput.includes(o.toLowerCase()));
   if (idx >= 0) return idx;
 
-  // Input contains option
-  idx = options.findIndex(o => normalizedInput.includes(o.toLowerCase()));
-  if (idx >= 0) return idx;
-
-  // Levenshtein distance-based fuzzy match
+  // 5. Levenshtein distance-based fuzzy match
   let bestDist = Infinity;
   let bestIdx = -1;
   options.forEach((opt, i) => {
-    const dist = levenshtein(normalizedInput, opt.toLowerCase());
-    if (dist < bestDist && dist <= opt.length * 0.5) {
+    const normOpt = opt.toLowerCase().trim();
+    const dist = levenshtein(normalizedInput, normOpt);
+    // Allow more flexibility (60% match instead of 50%)
+    if (dist < bestDist && dist <= Math.max(normOpt.length * 0.6, 2)) {
       bestDist = dist;
       bestIdx = i;
     }
@@ -1189,187 +1400,49 @@ function closeVoiceOverlay() {
   isListening = false;
 }
 
-// ── ChatGPT-Style Full Voice Flow ──
-// (This is the "Voice Bot" entry point)
-async function startFullVoiceFlow() {
-  state.isBotActive = true;
-  state.botStage = 'intro';
-
-  if (!SpeechRecognition && !GOOGLE_CLOUD_API_KEY) {
-    showToast(t('noVoiceSupport'), 'error');
-    return;
-  }
-
-  const overlay = document.getElementById('voice-overlay');
-  const statusEl = document.getElementById('voice-status');
-  const promptEl = document.getElementById('voice-prompt');
-  const resultEl = document.getElementById('voice-result');
-
-  // Activate overlay
-  overlay.classList.add('active');
-  document.body.classList.add('bot-speaking');
-
-  // Stage 1: Intro & Name
-  statusEl.textContent = t('voiceSpeaking');
-  promptEl.textContent = t('voicePromptName');
-  resultEl.textContent = '';
-
-  await speakAndWait(t('voicePromptName'));
-
-  document.body.classList.remove('bot-speaking');
-  statusEl.textContent = t('voiceListening');
-  const name = await listenForSpeech();
-
-  if (!name) {
-    terminateBot();
-    return;
-  }
-
-  resultEl.textContent = name;
-  statusEl.textContent = `${t('voiceConfirmName')}: ${name}`;
-  document.body.classList.add('bot-speaking');
-  await speakAndWait(`${t('voiceConfirmName')} ${name}`);
-
-  const nameInput = document.getElementById('devotee-name');
-  if (nameInput) nameInput.value = name;
-
-  // Stage 2: Star
-  document.body.classList.remove('bot-speaking');
-  statusEl.textContent = t('voiceSpeaking');
-  promptEl.textContent = t('voicePromptStar');
-  resultEl.textContent = '';
-
-  document.body.classList.add('bot-speaking');
-  await speakAndWait(t('voicePromptStar'));
-
-  document.body.classList.remove('bot-speaking');
-  statusEl.textContent = t('voiceListening');
-  const starText = await listenForSpeech();
-
-  if (!starText) {
-    terminateBot();
-    return;
-  }
-
-  const nakshatras = getNakshatras();
-  const matchedIndex = findBestMatch(starText, nakshatras);
-  const starSelect = document.getElementById('devotee-star');
-
-  if (matchedIndex >= 0) {
-    resultEl.textContent = nakshatras[matchedIndex];
-    statusEl.textContent = `${t('voiceConfirmStar')}: ${nakshatras[matchedIndex]}`;
-    if (starSelect) starSelect.value = matchedIndex.toString();
-    document.body.classList.add('bot-speaking');
-    await speakAndWait(`${t('voiceConfirmStar')} ${nakshatras[matchedIndex]}`);
-  } else {
-    resultEl.textContent = starText;
-    document.body.classList.add('bot-speaking');
-    await speakAndWait(t('speakStar')); // Prompt to try again or finish
-    terminateBot();
-    return;
-  }
-
-  // Stage 3: Auto add to cart & transition
-  document.body.classList.remove('bot-speaking');
-  closeVoiceOverlay();
-  addToCart();
-
-  // Ask if they want to proceed or add more
-  setTimeout(async () => {
-    overlay.classList.add('active');
-    document.body.classList.add('bot-speaking');
-    statusEl.textContent = t('voiceSpeaking');
-    promptEl.textContent = t('proceedToPay');
-
-    await speakAndWait(t('confirmAdd') + ". " + t('proceedToPay') + "?");
-
-    document.body.classList.remove('bot-speaking');
-    statusEl.textContent = t('voiceListening');
-    const response = await listenForSpeech();
-
-    if (response && (response.toLowerCase().includes('yes') || response.toLowerCase().includes('pay') || response.toLowerCase().includes('ha'))) {
-      renderCartScreen();
-      await speakAndWait(t('proceedToPay'));
-    }
-
-    terminateBot();
-  }, 1500);
-}
-
-function terminateBot() {
-  state.isBotActive = false;
-  state.botStage = 'idle';
-  closeVoiceOverlay();
-  document.body.classList.remove('bot-speaking');
-}
-
-async function startBotServiceGuidance() {
-  if (!state.isBotActive) return;
-
-  const overlay = document.getElementById('voice-overlay');
-  const statusEl = document.getElementById('voice-status');
-  const promptEl = document.getElementById('voice-prompt');
-  const resultEl = document.getElementById('voice-result');
-
-  overlay.classList.add('active');
-  document.body.classList.add('bot-speaking');
-
-  statusEl.textContent = t('voiceSpeaking');
-  promptEl.textContent = t('selectService');
-  resultEl.textContent = '';
-
-  await speakAndWait(t('selectService'));
-
-  document.body.classList.remove('bot-speaking');
-  statusEl.textContent = t('voiceListening');
-
-  const response = await listenForSpeech();
-
-  if (response) {
-    resultEl.textContent = response;
-    const services = ['archana', 'gheeVizhaku', 'coconutVizhaku'];
-    const matchedService = findBestMatch(response, services.map(s => t(s)));
-
-    if (matchedService >= 0) {
-      const selected = services[matchedService];
-      statusEl.textContent = `${t('confirmAdd')}: ${t(selected)}`;
-      document.body.classList.add('bot-speaking');
-      await speakAndWait(`${t(selected)}. ${t('enterDetails')}`);
-      selectService(selected);
-      return;
-    }
-  }
-
-  // If no match or error, guide them back
-  statusEl.textContent = 'Please tap a service Card';
-  setTimeout(terminateBot, 2000);
-}
+// Bot flow removed as per request.
+// Field-level voice input (startVoiceInput) is still maintained.
 
 function speakAndWait(text) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    // 1. Try Sarvam AI first if key exists
+    if (SARVAM_API_KEY) {
+      try {
+        const audio = await speakWithSarvam(text);
+        if (audio && audio instanceof Audio) {
+          audio.onended = () => {
+            _sarvamAudioPlayer = null;
+            setTimeout(resolve, 400);
+          };
+          audio.onerror = () => {
+            _sarvamAudioPlayer = null;
+            setTimeout(resolve, 100);
+          };
+          // Safety timeout for network issues
+          setTimeout(() => { if(_sarvamAudioPlayer === audio) resolve(); }, 12000);
+          return;
+        }
+      } catch (e) {
+        console.warn('Sarvam TTS wait failed, falling back:', e.message);
+      }
+    }
+
+    // 2. Browser Fallback
     if (!('speechSynthesis' in window)) {
       setTimeout(resolve, 1000);
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    const langCode = LANG_CODES[state.language] || 'en-IN';
-    const langPrefix = langCode.split('-')[0];
-    utterance.lang = langCode;
-    utterance.rate = SPEECH_RATE[langPrefix] || 0.9;
-    utterance.pitch = 1;
+    const utterance = speakWithBrowser(text);
+    if (!utterance) {
+      resolve();
+      return;
+    }
 
-    const bestVoice = getBestVoice(langCode);
-    if (bestVoice) utterance.voice = bestVoice;
-
-    utterance.onend = () => setTimeout(resolve, 300);
-    utterance.onerror = () => setTimeout(resolve, 300);
-
-    window.speechSynthesis.speak(utterance);
-
+    utterance.onend = () => setTimeout(resolve, 400);
+    utterance.onerror = () => setTimeout(resolve, 100);
     // Safety timeout
-    setTimeout(resolve, 5000);
+    setTimeout(resolve, 6000);
   });
 }
 
@@ -1419,51 +1492,187 @@ function listenForSpeechWeb() {
       }
     };
 
+    const stopBtn = document.getElementById('voice-stop-btn');
+    if (stopBtn) stopBtn.style.display = 'block';
+
     try {
       rec.start();
       isListening = true;
       timeout = setTimeout(() => {
         try { rec.stop(); } catch (e) { }
-      }, 8000);
+      }, 10000); // Increased to 10s
     } catch (e) {
       resolve(null);
     }
   });
 }
 
-function listenForSpeechCloud() {
+// ── Sarvam.ai STT ──
+function listenForSpeechSarvam() {
+  return new Promise(async (resolve) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+      });
+      startVolumeMeter(stream);
+      const mimeType = getSupportedMimeType();
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const chunks = [];
+      const resultEl = document.getElementById('voice-result');
+
+      const stopBtn = document.getElementById('voice-stop-btn');
+      if (stopBtn) stopBtn.style.display = 'block';
+
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      mediaRecorder.onstop = async () => {
+        if (stopBtn) stopBtn.style.display = 'none';
+        const audioBlob = new Blob(chunks, { type: mimeType });
+        const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
+
+        try {
+          const formData = new FormData();
+          formData.append('file', audioBlob, 'audio.webm');
+          formData.append('model', 'saaras:v2');
+          formData.append('language_code', langCode);
+
+          const response = await fetch('https://api.sarvam.ai/speech-to-text/transcribe', {
+            method: 'POST',
+            headers: { 'api-subscription-key': SARVAM_API_KEY },
+            body: formData
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.transcript) {
+              if (resultEl) resultEl.textContent = data.transcript;
+              resolve(data.transcript.trim());
+              return;
+            }
+          }
+          resolve(null);
+        } catch { resolve(null); }
+      };
+
+      mediaRecorder.start();
+      isListening = true;
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          stream.getTracks().forEach(t => t.stop());
+        }
+      }, 10000);
+    } catch { resolve(null); }
+  });
+}
+
+// ── Google Cloud STT ──
+function listenForSpeechGoogle() {
+  return new Promise(async (resolve) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+      });
+      startVolumeMeter(stream);
+      const mimeType = getSupportedMimeType();
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const chunks = [];
+      const resultEl = document.getElementById('voice-result');
+
+      const stopBtn = document.getElementById('voice-stop-btn');
+      if (stopBtn) stopBtn.style.display = 'block';
+
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      mediaRecorder.onstop = async () => {
+        if (stopBtn) stopBtn.style.display = 'none';
+        const audioBlob = new Blob(chunks, { type: mimeType });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64Audio = reader.result.split(',')[1];
+          const langCode = LANG_CODES[state.language] || 'en-IN';
+
+          try {
+            const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_API_KEY}`, {
+              method: 'POST',
+              body: JSON.stringify({
+                config: {
+                  encoding: mimeType.includes('mp4') || mimeType.includes('aac') ? 'MP3' : 'WEBM_OPUS',
+                  sampleRateHertz: 48000,
+                  languageCode: langCode,
+                  enableAutomaticPunctuation: true
+                },
+                audio: { content: base64Audio }
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data.results && data.results[0] && data.results[0].alternatives[0]) {
+                const text = data.results[0].alternatives[0].transcript;
+                if (resultEl) resultEl.textContent = text;
+                resolve(text.trim());
+                return;
+              }
+            }
+            resolve(null);
+          } catch { resolve(null); }
+        };
+      };
+
+      mediaRecorder.start();
+      isListening = true;
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          stream.getTracks().forEach(t => t.stop());
+        }
+      }, 10000);
+    } catch { resolve(null); }
+  });
+}
+
+// ── Reverie RevUp STT ──
+function listenForSpeechReverie() {
   return new Promise(async (resolve) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
       const chunks = [];
       const resultEl = document.getElementById('voice-result');
 
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
       mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks);
-        const b64 = await blobToBase64(blob);
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        
+        // Reverie File API parameters
+        const lang = state.language === 'en' ? 'english' : (state.language === 'ta' ? 'tamil' : (state.language === 'te' ? 'telugu' : (state.language === 'ml' ? 'malayalam' : 'kannada')));
+        
         try {
-          const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${GOOGLE_CLOUD_API_KEY}`, {
+          const response = await fetch('https://revapi.reverieinc.com/apiman-gateway/ReverieLanguageTechnologies/stt/1.0', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              config: { encoding: 'WEBM_OPUS', languageCode: LANG_CODES[state.language] || 'en-IN' },
-              audio: { content: b64.split(',')[1] }
-            })
+            headers: {
+              'REV-API-KEY': REVERIE_API_KEY,
+              'REV-APP-ID': REVERIE_APP_ID,
+              'cnt-type': 'audio/webm'
+            },
+            body: audioBlob
           });
-          const data = await response.json();
-          if (data.results && data.results.length > 0) {
-            const transcript = data.results[0].alternatives[0].transcript;
-            if (resultEl) resultEl.textContent = transcript;
-            resolve(transcript.trim());
-          } else {
-            resolve(null); // Fallback
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.display_text) {
+              if (resultEl) resultEl.textContent = data.display_text;
+              resolve(data.display_text.trim());
+              return;
+            }
           }
-        } catch {
-          resolve(null); // Fallback
-        }
+          resolve(null);
+        } catch { resolve(null); }
       };
 
       mediaRecorder.start();
@@ -1474,23 +1683,87 @@ function listenForSpeechCloud() {
           stream.getTracks().forEach(t => t.stop());
         }
       }, 5000);
-    } catch {
-      resolve(null);
-    }
+    } catch { resolve(null); }
+  });
+}
+
+// ── OpenAI Whisper STT ──
+async function listenForSpeechOpenAI() {
+  return new Promise(async (resolve) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+      });
+      startVolumeMeter(stream);
+      const mimeType = getSupportedMimeType();
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const chunks = [];
+      const resultEl = document.getElementById('voice-result');
+
+      const stopBtn = document.getElementById('voice-stop-btn');
+      if (stopBtn) stopBtn.style.display = 'block';
+
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      mediaRecorder.onstop = async () => {
+        if (stopBtn) stopBtn.style.display = 'none';
+        const audioBlob = new Blob(chunks, { type: mimeType });
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('model', 'whisper-1');
+        
+        // Use current app language as hint
+        const langCode = state.language === 'en' ? 'en' : state.language;
+        formData.append('language', langCode);
+
+        try {
+          const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+            body: formData
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.text) {
+              if (resultEl) resultEl.textContent = data.text;
+              resolve(data.text.trim());
+              return;
+            }
+          } else {
+            const err = await response.json();
+            console.error('OpenAI Error:', err);
+          }
+          resolve(null);
+        } catch (e) { console.error(e); resolve(null); }
+      };
+
+      mediaRecorder.start();
+      isListening = true;
+      setTimeout(() => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          stream.getTracks().forEach(t => t.stop());
+        }
+      }, 10000);
+    } catch { resolve(null); }
   });
 }
 
 function listenForSpeech() {
-  return new Promise((resolve) => {
-    if (GOOGLE_CLOUD_API_KEY) {
-      listenForSpeechCloud().then(res => {
-        if (res) resolve(res);
-        else listenForSpeechWeb().then(resolve);
-      });
-    } else {
-      listenForSpeechWeb().then(resolve);
-    }
-  });
+  const engine = state.config.voiceEngine || 'web';
+  
+  if (engine === 'openai' && OPENAI_API_KEY) {
+    return listenForSpeechOpenAI();
+  } else if (engine === 'sarvam' && SARVAM_API_KEY) {
+    return listenForSpeechSarvam();
+  } else if (engine === 'google' && GOOGLE_API_KEY) {
+    return listenForSpeechGoogle();
+  } else if (engine === 'reverie' && REVERIE_API_KEY) {
+    return listenForSpeechReverie();
+  } else {
+    return listenForSpeechWeb();
+  }
 }
 
 // Load and cache voices with retry
@@ -1790,13 +2063,12 @@ function updateOverlayOpacity(value) {
 function resetSettings() {
   localStorage.removeItem('ayyappa_settings');
   localStorage.removeItem('ayyappa_bg_image');
+  localStorage.removeItem('ayyappa_sarvam_api_key');
 
-  // Reset all CSS variables
   const root = document.documentElement;
   root.removeAttribute('style');
   document.body.removeAttribute('style');
 
-  // Reset background image
   const bgImage = document.querySelector('.bg-image');
   if (bgImage) {
     bgImage.style.backgroundImage = "url('ayyappa-bg.png')";
@@ -1804,59 +2076,222 @@ function resetSettings() {
     bgImage.style.backgroundSize = '300px';
   }
 
-  // Reset overlay
-  const overlay = document.getElementById('foreground-overlay');
-  if (overlay) overlay.style.background = 'transparent';
-
-  // Reset preview
   const preview = document.getElementById('bg-image-preview');
   if (preview) { preview.src = ''; preview.classList.remove('visible'); }
 
-  // Reset sliders
-  const opacitySlider = document.getElementById('bg-opacity-slider');
-  const sizeSlider = document.getElementById('bg-size-slider');
-  const cardSlider = document.getElementById('card-opacity-slider');
-  const overlaySlider = document.getElementById('overlay-opacity-slider');
-  if (opacitySlider) opacitySlider.value = 8;
-  if (sizeSlider) sizeSlider.value = 500;
-  if (cardSlider) cardSlider.value = 88;
-  if (overlaySlider) overlaySlider.value = 0;
-
-  // Reset values
-  const bgOpVal = document.getElementById('bg-opacity-value');
-  const bgSzVal = document.getElementById('bg-size-value');
-  const cardOpVal = document.getElementById('card-opacity-value');
-  const ovOpVal = document.getElementById('overlay-opacity-value');
-  if (bgOpVal) bgOpVal.textContent = '8%';
-  if (bgSzVal) bgSzVal.textContent = '500px';
-  if (cardOpVal) cardOpVal.textContent = '88%';
-  if (ovOpVal) ovOpVal.textContent = '0%';
-
-  // Reset color pickers
-  const bgPicker = document.getElementById('color-bg');
-  const primaryPicker = document.getElementById('color-primary');
-  const textPicker = document.getElementById('color-text');
-  const overlayPicker = document.getElementById('color-overlay');
-  if (bgPicker) bgPicker.value = '#FFFDF5';
-  if (primaryPicker) primaryPicker.value = '#B8860B';
-  if (textPicker) textPicker.value = '#3E2723';
-  if (overlayPicker) overlayPicker.value = '#FFFDF5';
-
-  // Reset API Key
-  localStorage.removeItem('ayyappa_gcp_api_key');
-  GOOGLE_CLOUD_API_KEY = '';
-  const gcpKeyInput = document.getElementById('gcp-api-key-input');
-  if (gcpKeyInput) gcpKeyInput.value = '';
-
+  SARVAM_API_KEY = '';
   applyTheme('divine-gold');
   showToast('Settings reset to default ✅');
 }
 
-// ── Save GCP API Key ──
-function saveGcpApiKey(value) {
-  GOOGLE_CLOUD_API_KEY = value.trim();
-  localStorage.setItem('ayyappa_gcp_api_key', GOOGLE_CLOUD_API_KEY);
-  showToast('API Key saved successfully ✅');
+// ── Save Config Actions ──
+function saveUpiConfig(field, value) {
+  state.config[field] = value.trim();
+  saveConfigToCloud();
+}
+
+function saveVoiceKey(type, value) {
+  if (type === 'sarvam') {
+    SARVAM_API_KEY = value.trim();
+    state.config.sarvamKey = SARVAM_API_KEY;
+    localStorage.setItem('ayyappa_sarvam_api_key', SARVAM_API_KEY);
+  } else if (type === 'google') {
+    GOOGLE_API_KEY = value.trim();
+    state.config.googleKey = GOOGLE_API_KEY;
+    localStorage.setItem('ayyappa_google_api_key', GOOGLE_API_KEY);
+  } else if (type === 'openai') {
+    OPENAI_API_KEY = value.trim();
+    state.config.openaiKey = OPENAI_API_KEY;
+    localStorage.setItem('ayyappa_openai_api_key', OPENAI_API_KEY);
+  } else if (type === 'reverie') {
+    REVERIE_API_KEY = value.trim();
+    state.config.reverieKey = REVERIE_API_KEY;
+    localStorage.setItem('ayyappa_reverie_api_key', REVERIE_API_KEY);
+  } else if (type === 'reverieAppId') {
+    REVERIE_APP_ID = value.trim();
+    state.config.reverieAppId = REVERIE_APP_ID;
+    localStorage.setItem('ayyappa_reverie_app_id', REVERIE_APP_ID);
+  }
+  saveConfigToCloud();
+  showToast('API Key Saved ✅');
+}
+
+function updateVoiceEngine(value) {
+  state.config.voiceEngine = value;
+  
+  // Show/Hide config UIs
+  document.querySelectorAll('.voice-engine-config').forEach(el => el.style.display = 'none');
+  const target = document.getElementById(value + '-config-ui');
+  if (target) target.style.display = 'block';
+
+  saveConfigToCloud();
+  showToast(`Voice Engine: ${value} ✅`);
+}
+
+// ── Service Management ──
+function showAddServiceForm() {
+  document.getElementById('edit-service-id').value = '';
+  document.getElementById('service-name-input').value = '';
+  document.getElementById('service-price-input').value = '';
+  document.getElementById('service-icon-input').value = '';
+  document.getElementById('service-details-input').value = '';
+  document.getElementById('service-form').style.display = 'block';
+}
+
+function hideServiceForm() {
+  document.getElementById('service-form').style.display = 'none';
+}
+
+function saveService() {
+  const idOrNew = document.getElementById('edit-service-id').value || 'svc_' + Date.now();
+  const name = document.getElementById('service-name-input').value.trim();
+  const price = Number(document.getElementById('service-price-input').value);
+  const icon = document.getElementById('service-icon-input').value.trim() || '🕉️';
+  const details = document.getElementById('service-details-input').value.trim();
+
+  if(!name || !price) {
+    showToast('Name and Price required', 'error');
+    return;
+  }
+
+  const existingIdx = state.config.services.findIndex(s => s.id === idOrNew);
+  const svc = { id: idOrNew, name, price, icon, details };
+
+  if(existingIdx >= 0) state.config.services[existingIdx] = svc;
+  else state.config.services.push(svc);
+
+  saveConfigToCloud();
+  renderSettingsOfferings();
+  hideServiceForm();
+  renderServiceScreen();
+}
+
+function deleteService(id) {
+  state.config.services = state.config.services.filter(s => s.id !== id);
+  saveConfigToCloud();
+  renderSettingsOfferings();
+  renderServiceScreen();
+}
+
+function editService(id) {
+  const svc = state.config.services.find(s => s.id === id);
+  if(!svc) return;
+  document.getElementById('edit-service-id').value = svc.id;
+  document.getElementById('service-name-input').value = svc.name;
+  document.getElementById('service-price-input').value = svc.price;
+  document.getElementById('service-icon-input').value = svc.icon;
+  document.getElementById('service-details-input').value = svc.details;
+  document.getElementById('service-form').style.display = 'block';
+}
+
+function renderSettingsOfferings() {
+  const list = document.getElementById('settings-offerings-list');
+  if(!list) return;
+
+  if (state.config.services.length === 0) {
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No services configured.</div>';
+    return;
+  }
+
+  list.innerHTML = `
+    <div class="settings-table-container">
+      <table class="settings-table">
+        <thead>
+          <tr>
+            <th class="col-icon">Logo</th>
+            <th class="col-name">Service Name</th>
+            <th class="col-price">Price</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.config.services.map(s => `
+            <tr>
+              <td class="col-icon">${s.icon}</td>
+              <td class="col-name">${s.name}</td>
+              <td class="col-price">₹${s.price}</td>
+              <td class="col-actions">
+                <button class="btn-icon edit" onclick="editService('${s.id}')" title="Edit">✏️</button>
+                <button class="btn-icon delete" onclick="deleteService('${s.id}')" title="Delete">🗑️</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function loadConfigAndServices() {
+  try {
+     const res = await fetch(SETTINGS_API_URL, { method: 'GET' });
+     if(res.ok) {
+       const data = await res.json();
+       state.config.upiId = data.upiId || state.config.upiId;
+       state.config.merchantName = data.merchantName || state.config.merchantName;
+       state.config.services = data.services || [];
+       state.config.voiceEngine = data.voiceEngine || 'web';
+       state.config.sarvamKey = data.sarvamKey || '';
+       state.config.googleKey = data.googleKey || '';
+       state.config.openaiKey = data.openaiKey || '';
+       state.config.reverieKey = data.reverieKey || '';
+       state.config.reverieAppId = data.reverieAppId || '';
+       
+       // Populate inputs in settings
+       const upiIn = document.getElementById('upi-id-input');
+       const merchIn = document.getElementById('merchant-name-input');
+       if(upiIn) upiIn.value = state.config.upiId;
+       if(merchIn) merchIn.value = state.config.merchantName;
+       
+       // Populate Voice settings
+       const engineSel = document.getElementById('voice-engine-select');
+       if (engineSel) {
+         engineSel.value = state.config.voiceEngine;
+         updateVoiceEngine(state.config.voiceEngine);
+       }
+       
+       const sarvamIn = document.getElementById('sarvam-api-key-input');
+       const googleIn = document.getElementById('google-api-key-input');
+       const openaiIn = document.getElementById('openai-api-key-input');
+       const reverieKeyIn = document.getElementById('reverie-api-key-input');
+       const reverieAppIn = document.getElementById('reverie-app-id-input');
+
+       if (sarvamIn) sarvamIn.value = state.config.sarvamKey;
+       if (googleIn) googleIn.value = state.config.googleKey;
+       if (openaiIn) openaiIn.value = state.config.openaiKey;
+       if (reverieKeyIn) reverieKeyIn.value = state.config.reverieKey;
+       if (reverieAppIn) reverieAppIn.value = state.config.reverieAppId;
+
+       SARVAM_API_KEY = state.config.sarvamKey || localStorage.getItem('ayyappa_sarvam_api_key') || '';
+       GOOGLE_API_KEY = state.config.googleKey || localStorage.getItem('ayyappa_google_api_key') || '';
+       OPENAI_API_KEY = state.config.openaiKey || localStorage.getItem('ayyappa_openai_api_key') || '';
+       REVERIE_API_KEY = state.config.reverieKey || localStorage.getItem('ayyappa_reverie_api_key') || '';
+       REVERIE_APP_ID = state.config.reverieAppId || localStorage.getItem('ayyappa_reverie_app_id') || '';
+       
+       renderSettingsOfferings();
+     }
+  } catch(e) { console.warn('Config load failed', e); }
+}
+
+async function saveConfigToCloud() {
+  try {
+    await fetch(SETTINGS_API_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        upiId: state.config.upiId, 
+        merchantName: state.config.merchantName,
+        services: state.config.services,
+        voiceEngine: state.config.voiceEngine,
+        sarvamKey: state.config.sarvamKey,
+        googleKey: state.config.googleKey,
+        openaiKey: state.config.openaiKey,
+        reverieKey: state.config.reverieKey,
+        reverieAppId: state.config.reverieAppId
+      })
+    });
+    showToast('Configuration Updated ✅');
+  } catch(e) { console.error(e); }
 }
 
 // ── Settings API URL ──
@@ -1974,11 +2409,11 @@ function loadSettings() {
     if (preview) { preview.src = bgImageData; preview.classList.add('visible'); }
   }
 
-  // Load GCP API Key (stays local only — never sent to server)
-  const savedApiKey = localStorage.getItem('ayyappa_gcp_api_key');
+  // Load Sarvam AI API Key (stays local only — never sent to server)
+  const savedApiKey = localStorage.getItem('ayyappa_sarvam_api_key');
   if (savedApiKey) {
-    GOOGLE_CLOUD_API_KEY = savedApiKey;
-    const keyInput = document.getElementById('gcp-api-key-input');
+    SARVAM_API_KEY = savedApiKey;
+    const keyInput = document.getElementById('sarvam-api-key-input');
     if (keyInput) keyInput.value = savedApiKey;
   }
 

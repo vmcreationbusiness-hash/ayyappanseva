@@ -19,7 +19,18 @@ const settingSchema = new mongoose.Schema({
   bgOpacity:      { type: Number, default: 8 },
   bgSize:         { type: Number, default: 500 },
   // Card
-  cardOpacity:    { type: Number, default: 88 }
+  cardOpacity:    { type: Number, default: 88 },
+  // Payment Config
+  upiId:          { type: String },
+  merchantName:   { type: String },
+  // Dynamic Services List
+  services: [{
+    id:           { type: String },
+    name:         { type: String },
+    price:        { type: Number },
+    icon:         { type: String },   // Emoji or base64 logo
+    details:      { type: String }
+  }]
 }, { timestamps: true });
 
 async function connectToDb() {

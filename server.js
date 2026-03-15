@@ -39,9 +39,12 @@ const Order = mongoose.model('Order', orderSchema);
 
 // ── Settings Schema (for background images, etc.) ──
 const settingSchema = new mongoose.Schema({
-  key:       { type: String, required: true, unique: true },
-  url:       { type: String },
-  fileName:  { type: String }
+  key:          { type: String, required: true, unique: true },
+  url:          { type: String }, // Background Image URL
+  fileName:     { type: String },
+  upiId:        { type: String },
+  merchantName: { type: String },
+  services:     { type: Array, default: [] }
 }, {
   timestamps: true
 });

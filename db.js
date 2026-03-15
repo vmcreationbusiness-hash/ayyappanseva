@@ -173,32 +173,6 @@ async function syncOfflineOrders(unsyncedOrders) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  CLOUD SETTINGS (Background Image, etc.)
-// ═══════════════════════════════════════════════════════════
-async function loadCloudSettings() {
-    if (!isServerOnline) return;
-
-    try {
-        const res = await fetch(`${API_BASE}/settings/background`);
-        if (res.ok) {
-            const data = await res.json();
-            applyCloudBackground(data.url);
-        }
-    } catch (error) {
-        console.warn('Could not load cloud settings:', error.message);
-    }
-}
-
-function applyCloudBackground(url) {
-    if (!url) return;
-    const bgContainer = document.querySelector('.bg-image');
-    if (bgContainer) {
-        bgContainer.style.backgroundImage = `url('${url}')`;
-        bgContainer.style.opacity = '0.15';
-    }
-}
-
-// ═══════════════════════════════════════════════════════════
 //  LOCAL STORAGE FALLBACK (Keeps data when offline)
 // ═══════════════════════════════════════════════════════════
 
@@ -253,6 +227,5 @@ function deleteOrderLocally(orderId) {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🔌 Database Connector Initializing...');
     await checkServerHealth();
-    loadCloudSettings();
     console.log(`✅ Database Mode: ${isServerOnline ? 'MongoDB (Server)' : 'localStorage (Offline)'}`);
 });
