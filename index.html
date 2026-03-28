@@ -122,7 +122,8 @@
 
       <div id="openai-config-ui" class="voice-engine-config" style="display:none;">
         <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top:10px;">
-          <span class="settings-label">OpenAI API Key</span>
+          <span class="settings-label">OpenAI API Key <a href="https://platform.openai.com/api-keys" target="_blank" style="font-size: 0.8em; color: var(--primary);">(Get Key)</a></span>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">Best overall quality with very high noise tolerance.</p>
           <input type="password" id="openai-api-key-input" placeholder="Enter sk-..."
             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-family: monospace;"
             onchange="saveVoiceKey('openai', this.value)">
@@ -131,7 +132,8 @@
 
       <div id="sarvam-config-ui" class="voice-engine-config">
         <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top:10px;">
-          <span class="settings-label">Sarvam.ai API Key</span>
+          <span class="settings-label">Sarvam.ai API Key <a href="https://dashboard.sarvam.ai/" target="_blank" style="font-size: 0.8em; color: var(--primary);">(Get Key)</a></span>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">Best for Indian languages, accents, and mixed "Hinglish/Tanglish".</p>
           <input type="password" id="sarvam-api-key-input" placeholder="Enter Sarvam.ai key..."
             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-family: monospace;"
             onchange="saveVoiceKey('sarvam', this.value)">
@@ -141,6 +143,7 @@
       <div id="google-config-ui" class="voice-engine-config" style="display:none;">
         <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top:10px;">
           <span class="settings-label">Google Cloud API Key</span>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">Excellent generic fallback with huge global language support.</p>
           <input type="password" id="google-api-key-input" placeholder="Enter Google API key..."
             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-family: monospace;"
             onchange="saveVoiceKey('google', this.value)">
@@ -150,6 +153,7 @@
       <div id="reverie-config-ui" class="voice-engine-config" style="display:none;">
         <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top:10px;">
           <span class="settings-label">Reverie App ID</span>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin:0;">Enterprise solution for deep regional Indian dialects.</p>
           <input type="text" id="reverie-app-id-input" placeholder="Enter Reverie App ID..."
             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border);"
             onchange="saveVoiceKey('reverieAppId', this.value)">
