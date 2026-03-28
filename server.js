@@ -44,7 +44,13 @@ const settingSchema = new mongoose.Schema({
   fileName:     { type: String },
   upiId:        { type: String },
   merchantName: { type: String },
-  services:     { type: Array, default: [] }
+  services:     { type: Array, default: [] },
+  voiceEngine:  { type: String },
+  sarvamKey:    { type: String },
+  googleKey:    { type: String },
+  openaiKey:    { type: String },
+  reverieKey:   { type: String },
+  reverieAppId: { type: String }
 }, {
   timestamps: true
 });
