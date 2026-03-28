@@ -2528,3 +2528,191 @@ function darkenColor(hex, percent) {
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(loadSettings, 100);
 });
+
+// ═══════════════════════════════════════════════════════════
+//  ALEXA-STYLE VOICE ASSISTANT (WAKE WORD & NLP)
+// ═══════════════════════════════════════════════════════════
+
+let alexaRec = null;
+let isAlexaListening = false;
+let alexaProcessTimeout = null;
+
+function toggleAlexaAssistant() {
+  if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
+    showToast('Voice Assistant not supported in this browser.', 'error');
+    return;
+  }
+  
+  if (isAlexaListening) {
+    stopAlexaAssistant();
+  } else {
+    startAlexaAssistant();
+  }
+}
+
+function stopAlexaAssistant() {
+  isAlexaListening = false;
+  document.getElementById('alexa-bubble').classList.remove('listening');
+  if (alexaRec) {
+    try { alexaRec.stop(); } catch(e) {}
+  }
+  showToast('Voice Assistant disabled.', 'info');
+}
+
+async function startAlexaAssistant() {
+  isAlexaListening = true;
+  const bubble = document.getElementById('alexa-bubble');
+  bubble.classList.add('listening');
+
+  // Pre-request microphone immediately on click to bypass secure context/gesture locks
+  try {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      const initStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      initStream.getTracks().forEach(t => t.stop());
+    }
+  } catch (err) {
+    showToast('Microphone access is required for Assistant.', 'error');
+    stopAlexaAssistant();
+    return;
+  }
+
+  showToast('Assistant is listening. Say "Swami" or "Ayyappa" followed by your command.', 'success');
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  alexaRec = new SR();
+  alexaRec.continuous = true;
+  alexaRec.interimResults = true;
+  alexaRec.lang = LANG_CODES[state.language] || 'en-IN';
+
+  let currentTranscriptBuffer = '';
+
+  alexaRec.onresult = (event) => {
+    let transcript = '';
+    let isFinal = false;
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript.toLowerCase();
+        if (event.results[i].isFinal) isFinal = true;
+    }
+
+    if (isFinal) {
+      currentTranscriptBuffer += ' ' + transcript.trim();
+      
+      clearTimeout(alexaProcessTimeout);
+      alexaProcessTimeout = setTimeout(() => {
+         processAlexaCommand(currentTranscriptBuffer);
+         currentTranscriptBuffer = '';
+      }, 1500); // Wait 1.5s of silence after final block before processing full intent
+    }
+  };
+
+  alexaRec.onend = () => {
+    // Keep it continuously alive
+    if (isAlexaListening && !isListening) {
+      try { alexaRec.start(); } catch(e) {}
+    }
+  };
+
+  alexaRec.onerror = (e) => {
+    // restart on network error or no-speech
+    if (isAlexaListening && !isListening) {
+       setTimeout(() => { try { alexaRec.start(); } catch(e){} }, 500);
+    }
+  }
+
+  try { alexaRec.start(); } catch(e) {}
+}
+
+async function processAlexaCommand(text) {
+  if (!text.trim()) return;
+  console.log("Alexa processed:", text);
+
+  // Check for wake words
+  if (!text.includes('swami') && !text.includes('ayyappa') && !text.includes('booking') && !text.includes('book') && !text.includes('add')) {
+    return; // Ignore background chatter not addressed to the assistant or without intention
+  }
+
+  const bubble = document.getElementById('alexa-bubble');
+  bubble.classList.add('active-mode');
+
+  // 1. Check for specific direct intents
+  if (text.includes('checkout') || text.includes('pay') || text.includes('order')) {
+    speakWithBrowser("Proceeding to payment.");
+    setTimeout(() => { bubble.classList.remove('active-mode'); proceedToPayment(); }, 1500);
+    return;
+  }
+
+  if (text.includes('cart') && (text.includes('clear') || text.includes('empty'))) {
+    renderCart(); // Clear is in cart ui, but we can just empty it
+    state.cart = [];
+    saveCart();
+    renderCart();
+    speakWithBrowser("Cart has been cleared.");
+    bubble.classList.remove('active-mode');
+    return;
+  }
+
+  if (text.includes('stop') || text.includes('cancel')) {
+    speakWithBrowser("Okay, canceling assistant.");
+    stopAlexaAssistant();
+    bubble.classList.remove('active-mode');
+    return;
+  }
+
+  // 2. Try to parse "Add Archana for John under star Ashwini"
+  let parsedService = state.currentService;
+  if (text.includes('archana')) parsedService = 'archana';
+  if ((text.includes('ghee') || text.includes('ney')) && text.includes('lamp')) parsedService = 'gheeVizhaku';
+  if ((text.includes('coconut') || text.includes('thenga')) && text.includes('lamp')) parsedService = 'coconutVizhaku';
+
+  let parsedStar = null;
+  const allStars = NAKSHATRAS.en.concat(NAKSHATRAS.ta, NAKSHATRAS.te, NAKSHATRAS.ml, NAKSHATRAS.kn);
+  
+  for(let star of allStars) {
+     if (text.includes(star.toLowerCase())) {
+        const normalizedIdx = findNakshatraIndexUniversal(star);
+        if (normalizedIdx >= 0) parsedStar = NAKSHATRAS[state.language][normalizedIdx];
+        break;
+     }
+  }
+
+  let parsedName = null;
+  const nameMatch = text.match(/(?:for|name is|devotee)\s+([a-zA-Z\s]+?)(?:star|nakshatra|with|and|,|under|the|$)/i);
+  if (nameMatch && nameMatch[1]) {
+    parsedName = nameMatch[1].trim().replace(/\b(to|the|a|for)\b/gi, '').trim();
+    if (parsedName === "") parsedName = null;
+  }
+
+  // If we couldn't parse everything, fall back to conversational step-by-step
+  if (!parsedName || !parsedStar) {
+     // Start the standard interactive wizard flow if we only heard "Ayyappa" or a partial command
+     speakWithBrowser("Yes? I am ready. What is the devotee's name?");
+     setTimeout(async () => {
+        bubble.classList.remove('active-mode');
+        
+        // suspend alexa temporarily
+        if (alexaRec) { try { alexaRec.stop(); } catch(e){} }
+        
+        await startVoiceOrderFlow();
+        
+        // resume alexa afterwards
+        setTimeout(() => { if (isAlexaListening) { try { alexaRec.start(); } catch(e){} } }, 3000);
+     }, 2000);
+     return;
+  }
+
+  // If we DID find everything, instantly add to cart!
+  const offering = SERVICES.find(s => s.id === parsedService);
+  state.cart.push({
+    id: Date.now().toString(),
+    serviceId: parsedService,
+    serviceName: offering.name[state.language] || offering.name.en,
+    price: offering.price,
+    devoteeName: parsedName,
+    star: parsedStar
+  });
+  saveCart();
+  renderCart();
+  
+  speakWithBrowser(`Added ${offering.name[state.language] || offering.name.en} for ${parsedName} under star ${parsedStar} to the cart.`);
+  setTimeout(() => bubble.classList.remove('active-mode'), 3000);
+}
