@@ -56,6 +56,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
+// Explicit root route: serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+
 // ═══════════════════════════════════════════════════════════
 //  API ROUTES — ORDERS
 // ═══════════════════════════════════════════════════════════
@@ -187,7 +193,13 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── Start Server ──
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📦 Database: MongoDB (${MONGO_URI})`);
-});
+// Export for Vercel serverless; also listen locally
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📦 Database: MongoDB (${MONGO_URI})`);
+  });
+  module.exports = app;
+}

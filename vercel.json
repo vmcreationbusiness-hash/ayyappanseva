@@ -8,28 +8,8 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/styles.css",
-      "dest": "/styles.css"
-    },
-    {
-      "src": "/app.js",
-      "dest": "/app.js"
-    },
-    {
-      "src": "/translations.js",
-      "dest": "/translations.js"
-    },
-    {
-      "src": "/ayyappa-bg.png",
-      "dest": "/ayyappa-bg.png"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/server.js"
     }
   ]
 }
