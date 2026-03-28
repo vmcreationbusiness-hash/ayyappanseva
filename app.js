@@ -944,7 +944,7 @@ async function startVoiceOrderFlow() {
   // Pre-request microphone immediately on user interaction to avoid browser block
   try {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       stream.getTracks().forEach(t => t.stop());
     }
   } catch (err) {
@@ -1064,7 +1064,7 @@ function startVoiceInput(field) {
 
   try {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));
+      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(s => s.getTracks().forEach(t => t.stop()));
     }
   } catch(e) {}
 
@@ -1120,7 +1120,7 @@ async function startSarvamSTT(field) {
   isListening = true;
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
     const audioChunks = [];
 
@@ -1677,7 +1677,7 @@ function listenForSpeechGoogle() {
 function listenForSpeechReverie() {
   return new Promise(async (resolve) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
       const chunks = [];
       const resultEl = document.getElementById('voice-result');
