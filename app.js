@@ -935,6 +935,17 @@ async function startVoiceOrderFlow() {
     return;
   }
 
+  // Pre-request microphone immediately on user interaction to avoid browser block
+  try {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+    }
+  } catch (err) {
+    showToast('Microphone permission required', 'error');
+    return;
+  }
+
   const overlay = document.getElementById('voice-overlay');
   const statusEl = document.getElementById('voice-status');
   const promptEl = document.getElementById('voice-prompt');
@@ -1035,6 +1046,12 @@ function startVoiceInput(field) {
   const statusEl = document.getElementById('voice-status');
   const promptEl = document.getElementById('voice-prompt');
   const resultEl = document.getElementById('voice-result');
+
+  try {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));
+    }
+  } catch(e) {}
 
   statusEl.textContent = t('voiceListening');
   promptEl.textContent = field === 'name' ? t('voicePromptName') : t('voicePromptStar');
@@ -1465,12 +1482,20 @@ function listenForSpeechWeb() {
 
     rec.onresult = (event) => {
       let transcript = '';
+      let isFinal = false;
       for (let i = event.resultIndex; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
+        if (event.results[i].isFinal) isFinal = true;
       }
       if (resultEl) resultEl.textContent = transcript;
 
-      if (event.results[event.results.length - 1].isFinal) {
+      // Reset timeout because we heard something
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        try { rec.stop(); } catch (e) { }
+      }, 10000);
+
+      if (isFinal) {
         finalTranscript = transcript.trim();
         clearTimeout(timeout);
         setTimeout(() => resolve(finalTranscript), 500);
