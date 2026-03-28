@@ -2,14 +2,54 @@
   "version": 2,
   "builds": [
     {
-      "src": "server.js",
+      "src": "api/index.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "styles.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "app.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "translations.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "ayyappa-bg.png",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/styles.css",
+      "dest": "/styles.css"
+    },
+    {
+      "src": "/app.js",
+      "dest": "/app.js"
+    },
+    {
+      "src": "/translations.js",
+      "dest": "/translations.js"
+    },
+    {
+      "src": "/ayyappa-bg.png",
+      "dest": "/ayyappa-bg.png"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/server.js"
+      "dest": "/index.html"
     }
   ]
 }
