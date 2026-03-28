@@ -912,6 +912,12 @@ async function speakWithSarvam(text) {
         _sarvamAudioPlayer = null;
       }
       _sarvamAudioPlayer = new Audio('data:audio/wav;base64,' + data.audios[0]);
+      
+      // Integrate bot-speaking visual state
+      _sarvamAudioPlayer.addEventListener('play', () => document.body.classList.add('bot-speaking'));
+      _sarvamAudioPlayer.addEventListener('ended', () => document.body.classList.remove('bot-speaking'));
+      _sarvamAudioPlayer.addEventListener('pause', () => document.body.classList.remove('bot-speaking'));
+      
       _sarvamAudioPlayer.play();
       return _sarvamAudioPlayer;
     }
@@ -1029,7 +1035,16 @@ function speakWithBrowser(text) {
   utterance.volume = 1.0; // MAX Volume for crowded places
   const langCode = LANG_CODES[state.language] || 'en-IN';
   utterance.lang = langCode;
-  utterance.rate = 0.95; // Slightly slower for clarity
+  
+  // Make voice "Bot Type"
+  utterance.rate = 1.0;
+  utterance.pitch = 0.5; // Lower, flatter pitch for machine/bot voice
+  
+  // Integrate bot-speaking visual state
+  utterance.addEventListener('start', () => document.body.classList.add('bot-speaking'));
+  utterance.addEventListener('end', () => document.body.classList.remove('bot-speaking'));
+  utterance.addEventListener('error', () => document.body.classList.remove('bot-speaking'));
+
   const bestVoice = getBestVoice(langCode);
   if (bestVoice) utterance.voice = bestVoice;
   window.speechSynthesis.speak(utterance);
