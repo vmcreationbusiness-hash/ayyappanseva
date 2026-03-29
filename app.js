@@ -1179,7 +1179,8 @@ async function startSarvamSTT(field) {
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    const localMimeType = getSupportedMimeType();
+    mediaRecorder = new MediaRecorder(stream, { mimeType: localMimeType });
     const audioChunks = [];
 
     mediaRecorder.ondataavailable = event => {
@@ -1188,14 +1189,15 @@ async function startSarvamSTT(field) {
 
     mediaRecorder.onstop = async () => {
       statusEl.textContent = t('processing');
-      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audioBlob = new Blob(audioChunks, { type: localMimeType });
       const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
-
+      const extension = localMimeType.includes('mp4') ? 'mp4' : (localMimeType.includes('ogg') ? 'ogg' : 'webm');
+      
       try {
-        // Sarvam STT uses multipart form-data
         const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('file', audioBlob, `audio.${extension}`);
         formData.append('model', 'saaras:v3');
+        formData.append('language_code', langCode);
 
         const response = await fetch('https://api.sarvam.ai/speech-to-text', {
           method: 'POST',
@@ -1328,6 +1330,12 @@ function startVolumeMeter(stream) {
     const dataArray = new Uint8Array(bufferLength);
     const volBar = document.getElementById('volume-bar');
 
+    // Silence detection state
+    let hasHeardSpeech = false;
+    let silenceStart = Date.now();
+    const SILENCE_THRESHOLD = 5; // Very low volume threshold (0-100 scale)
+    const SILENCE_WAIT_MS = 2500; // Stop after 2.5 seconds of silence
+
     function update() {
       if (!isListening || !window._audioContext) return;
       analyser.getByteFrequencyData(dataArray);
@@ -1338,6 +1346,20 @@ function startVolumeMeter(stream) {
       // Scale to 100%
       let vol = Math.min(100, Math.pow(average / 128, 0.5) * 100);
       if (volBar) volBar.style.width = vol + '%';
+
+      // Advanced Silence Detection for REST STT engines
+      if (vol > SILENCE_THRESHOLD) {
+        hasHeardSpeech = true;
+        silenceStart = Date.now(); // reset the silence timer whenever they speak
+      } else if (hasHeardSpeech) {
+        if (Date.now() - silenceStart > SILENCE_WAIT_MS) {
+          console.log(`🔇 Silence detected for ${SILENCE_WAIT_MS}ms, auto-stopping recording.`);
+          hasHeardSpeech = false; // prevent multiple triggers
+          stopCurrentRecording(); // cleanly finishes the recording and triggers the fetch
+          return; // stop the loop
+        }
+      }
+
       requestAnimationFrame(update);
     }
     update();
@@ -1675,10 +1697,11 @@ function listenForSpeechSarvam() {
         if (stopBtn) stopBtn.style.display = 'none';
         const audioBlob = new Blob(chunks, { type: mimeType });
         const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
-
+        const extension = mimeType.includes('mp4') ? 'mp4' : (mimeType.includes('ogg') ? 'ogg' : 'webm');
+        
         try {
           const formData = new FormData();
-          formData.append('file', audioBlob, 'audio.webm');
+          formData.append('file', audioBlob, `audio.${extension}`);
           formData.append('model', 'saaras:v3');
 
           const response = await fetch('https://api.sarvam.ai/speech-to-text', {
@@ -1694,9 +1717,16 @@ function listenForSpeechSarvam() {
               resolve(data.transcript.trim());
               return;
             }
+          } else {
+             const errorText = await response.text();
+             console.error(`Sarvam STT Error ${response.status}:`, errorText);
+             if (resultEl) resultEl.textContent = `API Error: ${response.status}`;
           }
           resolve(null);
-        } catch { resolve(null); }
+        } catch (err) { 
+           console.error('Sarvam STT Fetch Error:', err);
+           resolve(null); 
+        }
       };
 
       mediaRecorder.start();
