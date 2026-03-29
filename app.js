@@ -872,14 +872,21 @@ async function speak(text) {
   // Clear any existing browser speech to avoid overlap
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   
-  // If Sarvam API key is available, TRY Sarvam TTS first
-  if (SARVAM_API_KEY) {
-    try {
+  const engine = state.config.voiceEngine || 'web';
+  
+  try {
+    if (engine === 'openai' && OPENAI_API_KEY) {
+      const audio = await speakWithOpenAI(text);
+      if (audio) return audio;
+    } else if (engine === 'google' && GOOGLE_API_KEY) {
+      const audio = await speakWithGoogle(text);
+      if (audio) return audio;
+    } else if (engine === 'sarvam' && SARVAM_API_KEY) {
       const audio = await speakWithSarvam(text);
-      if (audio) return audio; // Sarvam succeeded
-    } catch(e) {
-      console.warn('Sarvam TTS failed, falling back to browser:', e.message);
+      if (audio) return audio;
     }
+  } catch (e) {
+    console.warn(`TTS engine ${engine} failed, falling back to browser:`, e.message);
   }
 
   // Fallback to browser speechSynthesis
@@ -889,7 +896,7 @@ async function speak(text) {
 async function speakWithSarvam(text) {
   try {
     const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
-    const speaker = SARVAM_VOICES[state.language] || 'arya';
+    const speaker = state.config.sarvamVoice || SARVAM_VOICES[state.language] || 'arya';
 
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
@@ -934,6 +941,73 @@ async function speakWithSarvam(text) {
     console.warn('Sarvam TTS error:', e.message);
     return null;
   }
+}
+
+async function speakWithOpenAI(text) {
+  try {
+    const voice = state.config.openaiVoice || 'alloy';
+    const res = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        input: text,
+        voice: voice
+      })
+    });
+    if (!res.ok) throw new Error('OpenAI TTS failed: ' + res.status);
+    
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => { URL.revokeObjectURL(url); document.body.classList.remove('bot-speaking'); };
+    audio.onerror = () => { URL.revokeObjectURL(url); document.body.classList.remove('bot-speaking'); };
+    _sarvamAudioPlayer = audio; 
+    
+    _sarvamAudioPlayer.addEventListener('play', () => document.body.classList.add('bot-speaking'));
+    await audio.play();
+    return audio;
+  } catch(e) { console.warn('OpenAI TTS error:', e.message); return null; }
+}
+
+async function speakWithGoogle(text) {
+  try {
+    const voice = state.config.googleVoice || 'en-IN-Wavenet-A';
+    const langCode = voice.substring(0, 5) || 'en-IN';
+    
+    const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GOOGLE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text: text },
+        voice: { languageCode: langCode, name: voice },
+        audioConfig: { audioEncoding: 'MP3' }
+      })
+    });
+    
+    if (!res.ok) throw new Error('Google TTS failed: ' + res.status);
+    const data = await res.json();
+    if (!data.audioContent) throw new Error('No audio content');
+    
+    const binaryString = atob(data.audioContent);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: 'audio/mp3' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => { URL.revokeObjectURL(url); document.body.classList.remove('bot-speaking'); };
+    audio.onerror = () => { URL.revokeObjectURL(url); document.body.classList.remove('bot-speaking'); };
+    _sarvamAudioPlayer = audio;
+    
+    _sarvamAudioPlayer.addEventListener('play', () => document.body.classList.add('bot-speaking'));
+    await audio.play();
+    return audio;
+  } catch(e) { console.warn('Google TTS error:', e.message); return null; }
 }
 
 async function startVoiceOrderFlow() {
@@ -2291,6 +2365,18 @@ function saveVoiceKey(type, value) {
   showToast('API Key Saved ✅');
 }
 
+function saveVoiceSettings(type, value) {
+  if (type === 'sarvamVoice') {
+    state.config.sarvamVoice = value.trim();
+  } else if (type === 'openaiVoice') {
+    state.config.openaiVoice = value.trim();
+  } else if (type === 'googleVoice') {
+    state.config.googleVoice = value.trim();
+  }
+  saveConfigToCloud();
+  showToast('Voice Settings Saved ✅');
+}
+
 function updateVoiceEngine(value) {
   state.config.voiceEngine = value;
   
@@ -2414,6 +2500,9 @@ async function loadConfigAndServices() {
        state.config.openaiKey = data.openaiKey || '';
        state.config.reverieKey = data.reverieKey || '';
        state.config.reverieAppId = data.reverieAppId || '';
+       state.config.sarvamVoice = data.sarvamVoice || 'arya';
+       state.config.openaiVoice = data.openaiVoice || 'alloy';
+       state.config.googleVoice = data.googleVoice || 'en-IN-Wavenet-A';
        
        // Populate inputs in settings
        const upiIn = document.getElementById('upi-id-input');
@@ -2427,6 +2516,14 @@ async function loadConfigAndServices() {
          engineSel.value = state.config.voiceEngine;
          updateVoiceEngine(state.config.voiceEngine);
        }
+       
+       const sarvamVoiceIn = document.getElementById('sarvam-voice-select');
+       const openaiVoiceIn = document.getElementById('openai-voice-select');
+       const googleVoiceIn = document.getElementById('google-voice-select');
+       
+       if (sarvamVoiceIn) sarvamVoiceIn.value = state.config.sarvamVoice;
+       if (openaiVoiceIn) openaiVoiceIn.value = state.config.openaiVoice;
+       if (googleVoiceIn) googleVoiceIn.value = state.config.googleVoice;
        
        const sarvamIn = document.getElementById('sarvam-api-key-input');
        const googleIn = document.getElementById('google-api-key-input');
@@ -2462,7 +2559,10 @@ async function saveConfigToCloud() {
       googleKey: state.config.googleKey || '',
       openaiKey: state.config.openaiKey || '',
       reverieKey: state.config.reverieKey || '',
-      reverieAppId: state.config.reverieAppId || ''
+      reverieAppId: state.config.reverieAppId || '',
+      sarvamVoice: state.config.sarvamVoice || 'arya',
+      openaiVoice: state.config.openaiVoice || 'alloy',
+      googleVoice: state.config.googleVoice || 'en-IN-Wavenet-A'
     };
     console.log('💾 Saving config to cloud:', JSON.stringify(payload, null, 2));
     const res = await fetch(SETTINGS_API_URL, {

@@ -128,6 +128,17 @@
             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-family: monospace;"
             onchange="saveVoiceKey('openai', this.value)">
         </div>
+        <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top:10px;">
+          <span class="settings-label">OpenAI Voice Name</span>
+          <select id="openai-voice-select" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border);" onchange="saveVoiceSettings('openaiVoice', this.value)">
+            <option value="alloy">Alloy (Neutral, Female)</option>
+            <option value="echo">Echo (Neutral, Male)</option>
+            <option value="fable">Fable (British, Non-binary)</option>
+            <option value="onyx">Onyx (Deep, Male)</option>
+            <option value="nova">Nova (Energetic, Female)</option>
+            <option value="shimmer">Shimmer (Clear, Female)</option>
+          </select>
+        </div>
       </div>
 
       <div id="sarvam-config-ui" class="voice-engine-config">
@@ -138,6 +149,17 @@
             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-family: monospace;"
             onchange="saveVoiceKey('sarvam', this.value)">
         </div>
+        <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top:10px;">
+          <span class="settings-label">Sarvam Voice Name (TTS)</span>
+          <select id="sarvam-voice-select" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border);" onchange="saveVoiceSettings('sarvamVoice', this.value)">
+            <option value="arya">Arya (Female, Clear)</option>
+            <option value="aditya">Aditya (Male, Smooth)</option>
+            <option value="anushka">Anushka (Female)</option>
+            <option value="shubh">Shubh (Male)</option>
+            <option value="kavya">Kavya (Female)</option>
+            <option value="rahul">Rahul (Male)</option>
+          </select>
+        </div>
       </div>
 
       <div id="google-config-ui" class="voice-engine-config" style="display:none;">
@@ -147,6 +169,15 @@
           <input type="password" id="google-api-key-input" placeholder="Enter Google API key..."
             style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border); font-family: monospace;"
             onchange="saveVoiceKey('google', this.value)">
+        </div>
+        <div class="settings-row" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top:10px;">
+          <span class="settings-label">Google Voice Name (TTS)</span>
+          <select id="google-voice-select" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid var(--border);" onchange="saveVoiceSettings('googleVoice', this.value)">
+            <option value="en-IN-Wavenet-A">en-IN-Wavenet-A (Female)</option>
+            <option value="en-IN-Wavenet-B">en-IN-Wavenet-B (Male)</option>
+            <option value="en-IN-Wavenet-C">en-IN-Wavenet-C (Male)</option>
+            <option value="en-IN-Wavenet-D">en-IN-Wavenet-D (Female)</option>
+          </select>
         </div>
       </div>
 

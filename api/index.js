@@ -48,7 +48,10 @@ const settingSchema = new mongoose.Schema({
   googleKey:    { type: String },
   openaiKey:    { type: String },
   reverieKey:   { type: String },
-  reverieAppId: { type: String }
+  reverieAppId: { type: String },
+  sarvamVoice:  { type: String },
+  openaiVoice:  { type: String },
+  googleVoice:  { type: String }
 }, { timestamps: true });
 
 const Setting = mongoose.models.Setting || mongoose.model('Setting', settingSchema);
@@ -141,7 +144,10 @@ app.put('/api/settings/:key', async (req, res) => {
       googleKey: req.body.googleKey,
       openaiKey: req.body.openaiKey,
       reverieKey: req.body.reverieKey,
-      reverieAppId: req.body.reverieAppId
+      reverieAppId: req.body.reverieAppId,
+      sarvamVoice: req.body.sarvamVoice,
+      openaiVoice: req.body.openaiVoice,
+      googleVoice: req.body.googleVoice
     };
 
     const setting = await Setting.findOneAndUpdate(
@@ -174,7 +180,10 @@ app.get('/api/settings/:key', async (req, res) => {
         googleKey: '',
         openaiKey: '',
         reverieKey: '',
-        reverieAppId: ''
+        reverieAppId: '',
+        sarvamVoice: 'arya',
+        openaiVoice: 'alloy',
+        googleVoice: 'en-IN-Wavenet-A'
       });
     }
     res.json(setting);
