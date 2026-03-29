@@ -868,13 +868,18 @@ function getBestVoice(langCode) {
 // ── Sarvam TTS Audio Player ──
 let _sarvamAudioPlayer = null;
 
-function speak(text) {
+async function speak(text) {
   // Clear any existing browser speech to avoid overlap
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   
-  // If Sarvam API key is available, use Sarvam TTS
+  // If Sarvam API key is available, TRY Sarvam TTS first
   if (SARVAM_API_KEY) {
-    return speakWithSarvam(text);
+    try {
+      const audio = await speakWithSarvam(text);
+      if (audio) return audio; // Sarvam succeeded
+    } catch(e) {
+      console.warn('Sarvam TTS failed, falling back to browser:', e.message);
+    }
   }
 
   // Fallback to browser speechSynthesis
@@ -1051,7 +1056,7 @@ function speakWithBrowser(text) {
   return utterance;
 }
 
-function startVoiceInput(field) {
+async function startVoiceInput(field) {
   if (!SpeechRecognition && !SARVAM_API_KEY) {
     showToast(t('noVoiceSupport'), 'error');
     return;
@@ -1062,11 +1067,16 @@ function startVoiceInput(field) {
   const promptEl = document.getElementById('voice-prompt');
   const resultEl = document.getElementById('voice-result');
 
+  // Pre-request microphone permission
   try {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(s => s.getTracks().forEach(t => t.stop()));
+      const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      s.getTracks().forEach(t => t.stop());
     }
-  } catch(e) {}
+  } catch(e) {
+    showToast('Microphone permission required', 'error');
+    return;
+  }
 
   statusEl.textContent = t('voiceListening');
   promptEl.textContent = field === 'name' ? t('voicePromptName') : t('voicePromptStar');
@@ -1077,30 +1087,75 @@ function startVoiceInput(field) {
   // Speak the prompt first, then start listening
   const prompt = field === 'name' ? t('voicePromptName') : t('voicePromptStar');
 
-  const utterance = speak(prompt);
+  try {
+    statusEl.textContent = t('voiceSpeaking') || 'Speaking...';
+    const utterance = await speak(prompt);
 
-  const startListeningFn = () => {
-    beginRecognition(field);
-  };
-
-  if (utterance && window.speechSynthesis.speaking) {
-    utterance.onend = startListeningFn;
-    // Fallback timeout
-    setTimeout(() => {
-      if (!isListening) startListeningFn();
-    }, 3000);
-  } else {
-    setTimeout(startListeningFn, 500);
+    // If browser TTS returned an utterance, wait for it to finish
+    if (utterance && utterance instanceof SpeechSynthesisUtterance) {
+      await new Promise(resolve => {
+        utterance.onend = resolve;
+        utterance.onerror = resolve;
+        setTimeout(resolve, 5000); // Safety timeout
+      });
+    }
+    // If Sarvam returned an Audio element, wait for it to finish
+    else if (utterance && utterance instanceof Audio) {
+      await new Promise(resolve => {
+        utterance.onended = resolve;
+        utterance.onerror = resolve;
+        setTimeout(resolve, 8000); // Safety timeout
+      });
+    }
+    // Small pause before listening
+    await new Promise(r => setTimeout(r, 300));
+  } catch(e) {
+    console.warn('TTS prompt failed:', e);
   }
+
+  // Now start listening
+  statusEl.textContent = t('voiceListening');
+  beginRecognition(field);
 }
 
-function beginRecognition(field) {
+async function beginRecognition(field) {
   if (isListening) return;
 
-  if (SARVAM_API_KEY) {
-    startSarvamSTT(field);
-  } else {
-    startWebSpeechAPI(field);
+  const statusEl = document.getElementById('voice-status');
+  const resultEl = document.getElementById('voice-result');
+
+  try {
+    const result = await listenForSpeech();
+    
+    if (result && result.trim()) {
+      if (resultEl) resultEl.textContent = result;
+      
+      if (field === 'name') {
+        const nameInput = document.getElementById('devotee-name');
+        if (nameInput) nameInput.value = result.trim();
+        statusEl.textContent = `✅ Name: ${result.trim()}`;
+      } else if (field === 'star') {
+        const matchedIndex = findNakshatraIndexUniversal(result);
+        if (matchedIndex >= 0) {
+          const nakshatrasInCurrentLang = getNakshatras();
+          const starName = nakshatrasInCurrentLang[matchedIndex];
+          const starSelect = document.getElementById('devotee-star');
+          if (starSelect) starSelect.value = starName;
+          statusEl.textContent = `✅ Star: ${starName}`;
+        } else {
+          statusEl.textContent = `❌ Star not found: "${result.trim()}"`;
+        }
+      }
+      
+      setTimeout(() => closeVoiceOverlay(), 1500);
+    } else {
+      statusEl.textContent = '❌ No speech detected';
+      setTimeout(() => closeVoiceOverlay(), 1500);
+    }
+  } catch(e) {
+    console.error('Recognition error:', e);
+    statusEl.textContent = '❌ Error occurred';
+    setTimeout(() => closeVoiceOverlay(), 1500);
   }
 }
 
