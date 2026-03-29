@@ -742,11 +742,11 @@ const SARVAM_LANG_CODES = {
 
 // Sarvam TTS speaker voices - 'meera' is the high-quality multilingual female voice
 const SARVAM_VOICES = {
-  en: 'meera',
-  ta: 'meera',
-  te: 'meera',
-  ml: 'meera',
-  kn: 'meera'
+  en: 'arya',
+  ta: 'arya',
+  te: 'arya',
+  ml: 'arya',
+  kn: 'arya'
 };
 
 
@@ -889,7 +889,7 @@ async function speak(text) {
 async function speakWithSarvam(text) {
   try {
     const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
-    const speaker = SARVAM_VOICES[state.language] || 'meera';
+    const speaker = SARVAM_VOICES[state.language] || 'arya';
 
     const res = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
@@ -901,7 +901,10 @@ async function speakWithSarvam(text) {
         text: text,
         target_language_code: langCode,
         speaker: speaker,
-        model: 'bulbul:v2'
+        model: 'bulbul:v3',
+        pitch: 0,
+        pace: 1.0,
+        loudness: 1.0
       })
     });
 
@@ -911,12 +914,14 @@ async function speakWithSarvam(text) {
     }
 
     const data = await res.json();
-    if (data.audios && data.audios[0]) {
+    const audioData = (data.audios && data.audios[0]) || data.audio_content;
+    
+    if (audioData) {
       if (_sarvamAudioPlayer) {
         _sarvamAudioPlayer.pause();
         _sarvamAudioPlayer = null;
       }
-      _sarvamAudioPlayer = new Audio('data:audio/wav;base64,' + data.audios[0]);
+      _sarvamAudioPlayer = new Audio('data:audio/wav;base64,' + audioData);
       
       // Integrate bot-speaking visual state
       _sarvamAudioPlayer.addEventListener('play', () => document.body.classList.add('bot-speaking'));
@@ -1192,10 +1197,9 @@ async function startSarvamSTT(field) {
         // Sarvam STT uses multipart form-data
         const formData = new FormData();
         formData.append('file', audioBlob, 'audio.webm');
-        formData.append('model', 'saaras:v2');
-        formData.append('language_code', langCode);
+        formData.append('model', 'saaras:v3');
 
-        const response = await fetch('https://api.sarvam.ai/speech-to-text/transcribe', {
+        const response = await fetch('https://api.sarvam.ai/speech-to-text', {
           method: 'POST',
           headers: {
             'api-subscription-key': SARVAM_API_KEY
@@ -1677,10 +1681,9 @@ function listenForSpeechSarvam() {
         try {
           const formData = new FormData();
           formData.append('file', audioBlob, 'audio.webm');
-          formData.append('model', 'saaras:v2');
-          formData.append('language_code', langCode);
+          formData.append('model', 'saaras:v3');
 
-          const response = await fetch('https://api.sarvam.ai/speech-to-text/transcribe', {
+          const response = await fetch('https://api.sarvam.ai/speech-to-text', {
             method: 'POST',
             headers: { 'api-subscription-key': SARVAM_API_KEY },
             body: formData
