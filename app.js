@@ -902,9 +902,7 @@ async function speakWithSarvam(text) {
         target_language_code: langCode,
         speaker: speaker,
         model: 'bulbul:v3',
-        pitch: 0,
-        pace: 1.0,
-        loudness: 1.0
+        pace: 1.0
       })
     });
 
