@@ -1479,70 +1479,119 @@ function speakAndWait(text) {
 }
 
 function listenForSpeechWeb() {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     if (!SpeechRecognition) {
+      console.warn('SpeechRecognition not available');
       resolve(null);
       return;
+    }
+
+    // Start a volume meter so user can see the mic is working
+    let micStream = null;
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
+      });
+      startVolumeMeter(micStream);
+    } catch(e) {
+      console.warn('Could not start volume meter:', e);
     }
 
     const rec = new SpeechRecognition();
     rec.lang = LANG_CODES[state.language] || 'en-IN';
     rec.interimResults = true;
     rec.maxAlternatives = 3;
-    rec.continuous = false;
+    rec.continuous = true; // Don't stop after first pause - keep listening
 
     const resultEl = document.getElementById('voice-result');
     let finalTranscript = '';
-    let timeout;
+    let resolved = false; // Prevent double-resolve race condition
+    let heardSomething = false;
+    let silenceTimer = null;
+    let maxTimer = null;
+
+    function finish(result) {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(silenceTimer);
+      clearTimeout(maxTimer);
+      isListening = false;
+      const stopBtn = document.getElementById('voice-stop-btn');
+      if (stopBtn) stopBtn.style.display = 'none';
+      // Stop volume meter mic
+      if (micStream) micStream.getTracks().forEach(t => t.stop());
+      try { rec.stop(); } catch(e) {}
+      console.log('🎤 Web STT result:', result);
+      resolve(result);
+    }
 
     rec.onresult = (event) => {
-      let transcript = '';
-      let isFinal = false;
+      let interimTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
-        if (event.results[i].isFinal) isFinal = true;
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
       }
-      if (resultEl) resultEl.textContent = transcript;
 
-      // Reset timeout because we heard something
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        try { rec.stop(); } catch (e) { }
-      }, 10000);
+      // Show what's being heard in real-time
+      if (resultEl) resultEl.textContent = finalTranscript || interimTranscript;
 
-      if (isFinal) {
-        finalTranscript = transcript.trim();
-        clearTimeout(timeout);
-        setTimeout(() => resolve(finalTranscript), 500);
+      heardSomething = true;
+
+      // Reset silence timer — after hearing speech, wait 3 seconds of silence then finish
+      clearTimeout(silenceTimer);
+      if (finalTranscript) {
+        silenceTimer = setTimeout(() => {
+          console.log('🔇 Silence detected after speech, finishing with:', finalTranscript.trim());
+          finish(finalTranscript.trim());
+        }, 2500); // 2.5s silence after final result = done
       }
     };
 
     rec.onerror = (event) => {
-      console.error('Voice error:', event.error);
-      clearTimeout(timeout);
-      resolve(null);
+      console.error('🎤 Voice error:', event.error);
+      if (event.error === 'no-speech') {
+        // Not critical — just means silence, let maxTimer handle it
+        return;
+      }
+      finish(finalTranscript.trim() || null);
     };
 
     rec.onend = () => {
-      clearTimeout(timeout);
+      // If recognition ended naturally and we have a result, return it
       if (finalTranscript) {
-        resolve(finalTranscript);
-      } else {
-        resolve(null);
+        finish(finalTranscript.trim());
+      } else if (!heardSomething) {
+        // Silence throughout — return null
+        finish(null);
       }
+      // If heardSomething but no finalTranscript, the silenceTimer will handle it
     };
 
     const stopBtn = document.getElementById('voice-stop-btn');
-    if (stopBtn) stopBtn.style.display = 'block';
+    if (stopBtn) {
+      stopBtn.style.display = 'block';
+      stopBtn.onclick = () => {
+        finish(finalTranscript.trim() || null);
+      };
+    }
 
     try {
       rec.start();
       isListening = true;
-      timeout = setTimeout(() => {
-        try { rec.stop(); } catch (e) { }
-      }, 10000); // Increased to 10s
+      console.log('🎤 Web Speech API listening... lang:', rec.lang);
+
+      // Maximum listening time: 15 seconds
+      maxTimer = setTimeout(() => {
+        console.log('⏱ Max listening time reached');
+        finish(finalTranscript.trim() || null);
+      }, 15000);
     } catch (e) {
-      resolve(null);
+      console.error('Failed to start recognition:', e);
+      finish(null);
     }
   });
 }
