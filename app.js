@@ -877,20 +877,44 @@ async function speak(text) {
   try {
     if (engine === 'openai' && OPENAI_API_KEY) {
       const audio = await speakWithOpenAI(text);
-      if (audio) return audio;
+      if (audio) {
+        return new Promise((resolve) => {
+            audio.onended = () => resolve(audio);
+            // Safety timeout
+            setTimeout(() => resolve(audio), 8000);
+        });
+      }
     } else if (engine === 'google' && GOOGLE_API_KEY) {
       const audio = await speakWithGoogle(text);
-      if (audio) return audio;
+      if (audio) {
+        return new Promise((resolve) => {
+            audio.onended = () => resolve(audio);
+            setTimeout(() => resolve(audio), 8000);
+        });
+      }
     } else if (engine === 'sarvam' && SARVAM_API_KEY) {
       const audio = await speakWithSarvam(text);
-      if (audio) return audio;
+      if (audio) {
+        return new Promise((resolve) => {
+            audio.onended = () => resolve(audio);
+            setTimeout(() => resolve(audio), 8000);
+        });
+      }
     }
   } catch (e) {
     console.warn(`TTS engine ${engine} failed, falling back to browser:`, e.message);
   }
 
   // Fallback to browser speechSynthesis
-  return speakWithBrowser(text);
+  const utterance = speakWithBrowser(text);
+  if (utterance) {
+      return new Promise((resolve) => {
+          utterance.onend = () => resolve(null);
+          utterance.onerror = () => resolve(null);
+          setTimeout(resolve, 8000);
+      });
+  }
+  return null;
 }
 
 async function speakWithSarvam(text) {
@@ -1381,7 +1405,12 @@ function stopCurrentRecording() {
     try { recognition.stop(); } catch (e) { }
   }
   if (mediaRecorder && mediaRecorder.state === 'recording') {
-    try { mediaRecorder.stop(); } catch (e) { }
+    try { 
+      mediaRecorder.stop(); 
+      if (mediaRecorder.stream) {
+        mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      }
+    } catch (e) { }
   }
   if (window._audioContext) {
     try { window._audioContext.close(); window._audioContext = null; } catch (e) { }
@@ -1404,11 +1433,13 @@ function startVolumeMeter(stream) {
     const dataArray = new Uint8Array(bufferLength);
     const volBar = document.getElementById('volume-bar');
 
-    // Silence detection state
+    // Silence/Speech detection state
     let hasHeardSpeech = false;
     let silenceStart = Date.now();
-    const SILENCE_THRESHOLD = 5; // Very low volume threshold (0-100 scale)
-    const SILENCE_WAIT_MS = 2500; // Stop after 2.5 seconds of silence
+    let captureStart = Date.now();
+    const SILENCE_THRESHOLD = 10; // Increased to filter background hum/fan noise
+    const SILENCE_WAIT_MS = 2200; // Finish quicker after pause
+    const INITIAL_SILENCE_LIMIT = 4000; // Auto-stop if no speech heard at ALL for 4s
 
     function update() {
       if (!isListening || !window._audioContext) return;
@@ -1423,14 +1454,25 @@ function startVolumeMeter(stream) {
 
       // Advanced Silence Detection for REST STT engines
       if (vol > SILENCE_THRESHOLD) {
+        if (!hasHeardSpeech) console.log('🎙️ Speech detected!');
         hasHeardSpeech = true;
         silenceStart = Date.now(); // reset the silence timer whenever they speak
-      } else if (hasHeardSpeech) {
-        if (Date.now() - silenceStart > SILENCE_WAIT_MS) {
-          console.log(`🔇 Silence detected for ${SILENCE_WAIT_MS}ms, auto-stopping recording.`);
-          hasHeardSpeech = false; // prevent multiple triggers
-          stopCurrentRecording(); // cleanly finishes the recording and triggers the fetch
-          return; // stop the loop
+      } else {
+        const now = Date.now();
+        if (hasHeardSpeech) {
+          // They spoke, now they are silent - stop after pause
+          if (now - silenceStart > SILENCE_WAIT_MS) {
+            console.log(`🔇 Silence detected for ${SILENCE_WAIT_MS}ms, auto-stopping.`);
+            stopCurrentRecording();
+            return;
+          }
+        } else {
+          // They haven't spoken yet at all
+          if (now - captureStart > INITIAL_SILENCE_LIMIT) {
+             console.log(`⌛ No speech detected for ${INITIAL_SILENCE_LIMIT}ms, closing automatically.`);
+             stopCurrentRecording();
+             return;
+          }
         }
       }
 
@@ -1768,6 +1810,7 @@ function listenForSpeechSarvam() {
       mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
       mediaRecorder.onstop = async () => {
+        console.log('🎤 MediaRecorder stop. Chunks gathered:', chunks.length);
         if (stopBtn) stopBtn.style.display = 'none';
         
         let safeMimeType = mimeType;
@@ -1776,6 +1819,11 @@ function listenForSpeechSarvam() {
         else if (mimeType.includes('ogg')) safeMimeType = 'audio/ogg';
 
         const audioBlob = new Blob(chunks, { type: safeMimeType });
+        console.log('📦 Created Blob:', safeMimeType, 'Size:', audioBlob.size, 'bytes');
+        
+        if (audioBlob.size < 100) {
+            console.warn('⚠️ Audio blob too small. Check microphone input.');
+        }
         const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
         const extension = safeMimeType.includes('mp4') ? 'mp4' : (safeMimeType.includes('ogg') ? 'ogg' : 'webm');
         
@@ -1805,12 +1853,14 @@ function listenForSpeechSarvam() {
           resolve(null);
         } catch (err) { 
            console.error('Sarvam STT Fetch Error:', err);
+           if (resultEl) resultEl.textContent = 'Network Error';
            resolve(null); 
         }
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // 1s timeslices to ensure chunks are populated
       isListening = true;
+      console.log('🎤 Sarvam recorder started... timesliced.');
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
@@ -1876,12 +1926,12 @@ function listenForSpeechGoogle() {
         };
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000);
       isListening = true;
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
-          stream.getTracks().forEach(t => t.stop());
+          if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
         }
       }, 10000);
     } catch { resolve(null); }
@@ -1993,12 +2043,12 @@ async function listenForSpeechOpenAI() {
         } catch (e) { console.error(e); resolve(null); }
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000);
       isListening = true;
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
-          stream.getTracks().forEach(t => t.stop());
+          if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
         }
       }, 10000);
     } catch { resolve(null); }
@@ -2006,8 +2056,19 @@ async function listenForSpeechOpenAI() {
 }
 
 function listenForSpeech() {
-  const engine = state.config.voiceEngine || 'web';
+  let engine = state.config.voiceEngine;
+
+  // AUTO-DETECT ENGINE: If user hasn't chosen one, but keys are present, use them!
+  if (!engine || engine === 'web') {
+    if (SARVAM_API_KEY) engine = 'sarvam';
+    else if (OPENAI_API_KEY) engine = 'openai';
+    else if (GOOGLE_API_KEY) engine = 'google';
+    else if (REVERIE_API_KEY) engine = 'reverie';
+    else engine = 'web';
+  }
   
+  console.log(`🎤 Starting STT with engine: ${engine}`);
+
   if (engine === 'openai' && OPENAI_API_KEY) {
     return listenForSpeechOpenAI();
   } else if (engine === 'sarvam' && SARVAM_API_KEY) {
@@ -2017,6 +2078,11 @@ function listenForSpeech() {
   } else if (engine === 'reverie' && REVERIE_API_KEY) {
     return listenForSpeechReverie();
   } else {
+    // Check if web is even supported before trying
+    if (!SpeechRecognition) {
+      showToast('Browser STT not supported. Please use Chrome or configure a Cloud Key.', 'warning');
+      return Promise.resolve(null);
+    }
     return listenForSpeechWeb();
   }
 }
