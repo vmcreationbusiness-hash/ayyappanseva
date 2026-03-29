@@ -161,13 +161,30 @@ app.delete('/api/orders/:id', async (req, res) => {
 // Save/Update a setting
 app.put('/api/settings/:key', async (req, res) => {
   try {
+    console.log(`📝 Settings PUT for key="${req.params.key}":`, JSON.stringify(req.body, null, 2));
+    
+    const updateData = {
+      key: req.params.key,
+      upiId: req.body.upiId,
+      merchantName: req.body.merchantName,
+      services: req.body.services,
+      voiceEngine: req.body.voiceEngine,
+      sarvamKey: req.body.sarvamKey,
+      googleKey: req.body.googleKey,
+      openaiKey: req.body.openaiKey,
+      reverieKey: req.body.reverieKey,
+      reverieAppId: req.body.reverieAppId
+    };
+
     const setting = await Setting.findOneAndUpdate(
       { key: req.params.key },
-      { ...req.body, key: req.params.key },
+      { $set: updateData },
       { upsert: true, new: true, lean: true }
     );
+    console.log('✅ Settings saved to MongoDB:', setting);
     res.json(setting);
   } catch (error) {
+    console.error('❌ Settings save error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

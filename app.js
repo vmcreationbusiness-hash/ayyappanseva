@@ -2262,6 +2262,9 @@ function renderSettingsOfferings() {
   `;
 }
 
+// ── Settings API URL (must be defined before use) ──
+const SETTINGS_API_URL = '/api/settings/app-settings';
+
 async function loadConfigAndServices() {
   try {
      const res = await fetch(SETTINGS_API_URL, { method: 'GET' });
@@ -2315,27 +2318,37 @@ async function loadConfigAndServices() {
 
 async function saveConfigToCloud() {
   try {
-    await fetch(SETTINGS_API_URL, {
+    const payload = { 
+      upiId: state.config.upiId || '', 
+      merchantName: state.config.merchantName || '',
+      services: state.config.services || [],
+      voiceEngine: state.config.voiceEngine || 'web',
+      sarvamKey: state.config.sarvamKey || '',
+      googleKey: state.config.googleKey || '',
+      openaiKey: state.config.openaiKey || '',
+      reverieKey: state.config.reverieKey || '',
+      reverieAppId: state.config.reverieAppId || ''
+    };
+    console.log('💾 Saving config to cloud:', JSON.stringify(payload, null, 2));
+    const res = await fetch(SETTINGS_API_URL, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        upiId: state.config.upiId, 
-        merchantName: state.config.merchantName,
-        services: state.config.services,
-        voiceEngine: state.config.voiceEngine,
-        sarvamKey: state.config.sarvamKey,
-        googleKey: state.config.googleKey,
-        openaiKey: state.config.openaiKey,
-        reverieKey: state.config.reverieKey,
-        reverieAppId: state.config.reverieAppId
-      })
+      body: JSON.stringify(payload)
     });
-    showToast('Configuration Updated ✅');
-  } catch(e) { console.error(e); }
+    if (res.ok) {
+      const saved = await res.json();
+      console.log('✅ Config saved to DB:', saved);
+      showToast('Configuration Saved to Database ✅');
+    } else {
+      const errText = await res.text();
+      console.error('❌ Config save failed:', res.status, errText);
+      showToast('Failed to save config: ' + res.status, 'error');
+    }
+  } catch(e) {
+    console.error('❌ Config save error:', e);
+    showToast('Network error saving config', 'error');
+  }
 }
-
-// ── Settings API URL ──
-const SETTINGS_API_URL = '/api/settings/app-settings';
 
 // ── Debounce timer for API calls (avoids spam on slider drag) ──
 let _settingsSaveTimer = null;
