@@ -1769,9 +1769,15 @@ function listenForSpeechSarvam() {
 
       mediaRecorder.onstop = async () => {
         if (stopBtn) stopBtn.style.display = 'none';
-        const audioBlob = new Blob(chunks, { type: mimeType });
+        
+        let safeMimeType = mimeType;
+        if (mimeType.includes('webm')) safeMimeType = 'audio/webm';
+        else if (mimeType.includes('mp4') || mimeType.includes('m4a')) safeMimeType = 'audio/mp4';
+        else if (mimeType.includes('ogg')) safeMimeType = 'audio/ogg';
+
+        const audioBlob = new Blob(chunks, { type: safeMimeType });
         const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
-        const extension = mimeType.includes('mp4') ? 'mp4' : (mimeType.includes('ogg') ? 'ogg' : 'webm');
+        const extension = safeMimeType.includes('mp4') ? 'mp4' : (safeMimeType.includes('ogg') ? 'ogg' : 'webm');
         
         try {
           const formData = new FormData();
