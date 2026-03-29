@@ -189,12 +189,23 @@ app.put('/api/settings/:key', async (req, res) => {
   }
 });
 
-// Get a setting
+// Get a setting (returns empty defaults instead of 404)
 app.get('/api/settings/:key', async (req, res) => {
   try {
     const setting = await Setting.findOne({ key: req.params.key }).lean();
     if (!setting) {
-      return res.status(404).json({ error: 'Setting not found' });
+      return res.json({
+        key: req.params.key,
+        upiId: '',
+        merchantName: '',
+        services: [],
+        voiceEngine: 'web',
+        sarvamKey: '',
+        googleKey: '',
+        openaiKey: '',
+        reverieKey: '',
+        reverieAppId: ''
+      });
     }
     res.json(setting);
   } catch (error) {

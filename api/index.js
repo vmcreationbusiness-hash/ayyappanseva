@@ -42,7 +42,13 @@ const settingSchema = new mongoose.Schema({
   fileName:     { type: String },
   upiId:        { type: String },
   merchantName: { type: String },
-  services:     { type: Array, default: [] }
+  services:     { type: Array, default: [] },
+  voiceEngine:  { type: String },
+  sarvamKey:    { type: String },
+  googleKey:    { type: String },
+  openaiKey:    { type: String },
+  reverieKey:   { type: String },
+  reverieAppId: { type: String }
 }, { timestamps: true });
 
 const Setting = mongoose.models.Setting || mongoose.model('Setting', settingSchema);
@@ -119,25 +125,58 @@ app.delete('/api/orders/:id', async (req, res) => {
 
 // ── API ROUTES — SETTINGS ──
 
+// Save/Update a setting (uses $set for proper field merging)
 app.put('/api/settings/:key', async (req, res) => {
   try {
     await connectDB();
+    console.log(`📝 Settings PUT for key="${req.params.key}":`, JSON.stringify(req.body, null, 2));
+
+    const updateData = {
+      key: req.params.key,
+      upiId: req.body.upiId,
+      merchantName: req.body.merchantName,
+      services: req.body.services,
+      voiceEngine: req.body.voiceEngine,
+      sarvamKey: req.body.sarvamKey,
+      googleKey: req.body.googleKey,
+      openaiKey: req.body.openaiKey,
+      reverieKey: req.body.reverieKey,
+      reverieAppId: req.body.reverieAppId
+    };
+
     const setting = await Setting.findOneAndUpdate(
       { key: req.params.key },
-      { ...req.body, key: req.params.key },
+      { $set: updateData },
       { upsert: true, new: true, lean: true }
     );
+    console.log('✅ Settings saved to MongoDB:', setting);
     res.json(setting);
   } catch (error) {
+    console.error('❌ Settings save error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
+// Get a setting (returns empty defaults on 404 instead of error)
 app.get('/api/settings/:key', async (req, res) => {
   try {
     await connectDB();
     const setting = await Setting.findOne({ key: req.params.key }).lean();
-    if (!setting) return res.status(404).json({ error: 'Setting not found' });
+    if (!setting) {
+      // Return empty defaults so the frontend can still populate fields
+      return res.json({
+        key: req.params.key,
+        upiId: '',
+        merchantName: '',
+        services: [],
+        voiceEngine: 'web',
+        sarvamKey: '',
+        googleKey: '',
+        openaiKey: '',
+        reverieKey: '',
+        reverieAppId: ''
+      });
+    }
     res.json(setting);
   } catch (error) {
     res.status(500).json({ error: error.message });
