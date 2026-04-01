@@ -202,4 +202,37 @@ app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', database: states[dbState] || 'unknown', timestamp: new Date().toISOString() });
 });
 
+const axios = require('axios');
+const multer = require('multer');
+const FormData = require('form-data');
+const upload = multer();
+
+// ── Proxy for Sarvam AI (STT) ──
+app.post('/api/proxy/sarvam-stt', upload.single('file'), async (req, res) => {
+  try {
+    const { model, language_code, apiKey } = req.body;
+    if (!req.file) return res.status(400).json({ error: 'No audio file provided' });
+
+    const form = new FormData();
+    form.append('file', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype
+    });
+    form.append('model', model || 'saaras:v3');
+    form.append('language_code', language_code || 'en-IN');
+
+    const response = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
+      headers: {
+        ...form.getHeaders(),
+        'api-subscription-key': apiKey
+      }
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('Proxy STT Error:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json(error.response?.data || { error: error.message });
+  }
+});
+
 module.exports = app;

@@ -58,32 +58,18 @@
   <!--  MAIN APPLICATION                      -->
   <!-- ═══════════════════════════════════════ -->
   <div id="app">
-
-    <!-- ── Screen 1: Service Selection (Landing Page) ── -->
-    <section id="screen-service" class="screen active">
-      <!-- Rendered by JS -->
+    <!-- Screen: Single-Page Multi-Function Dashboard -->
+    <section id="screen-dashboard" class="screen active">
+      <!-- Logic-populated 3-column Layout -->
     </section>
 
-    <!-- ── Screen 2: Single-Page Devotee Details & Inline Payment ── -->
-    <section id="screen-entry" class="screen">
-      <!-- Rendered by JS -->
-    </section>
+    <!-- Screen: Orders Archive (Separate Tab) -->
+    <section id="screen-orders" class="screen"></section>
 
-    <!-- ── Screen 3: Invoice & Print (Now a Modal) ── -->
-    <section id="screen-invoice" class="screen"></section>
-
-    <!-- ── Invoice Pop-up Modal ── -->
+    <!-- Invoice Modal -->
     <div id="invoice-modal-overlay" class="voice-overlay">
-      <div id="invoice-modal-content" class="invoice-modal-content">
-        <!-- Rendered by JS -->
-      </div>
+      <div id="invoice-modal-content" class="invoice-modal-content"></div>
     </div>
-
-    <!-- ── Screen 4: Orders History (Admin) ── -->
-    <section id="screen-orders" class="screen">
-      <!-- Rendered by JS -->
-    </section>
-
   </div>
 
   <!-- ═══════════════════════════════════════ -->
@@ -359,26 +345,17 @@
   <!-- ═══════════════════════════════════════ -->
   <div id="voice-overlay" class="voice-overlay">
     <div class="voice-modal">
-      <div class="voice-waves">
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
-        <div class="wave-bar"></div>
+      <div class="voice-visualizer-container">
+        <canvas id="voice-visualizer"></canvas>
       </div>
       <div id="voice-status" class="voice-status">Listening...</div>
       <div id="voice-prompt" class="voice-prompt"></div>
       
       <!-- Audio Visualizer / Volume Meter -->
-      <div class="audio-volume-container">
-        <div id="volume-bar" class="volume-bar"></div>
+      <div class="audio-volume-panel">
+        <div class="audio-volume-container">
+          <div id="volume-bar" class="volume-bar"></div>
+        </div>
         <div class="volume-label">Microphone Sensitivity</div>
       </div>
 

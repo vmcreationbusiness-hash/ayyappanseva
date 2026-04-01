@@ -117,7 +117,16 @@ const TRANSLATIONS = {
     offerings: "Offerings",
     items: "Items",
     status: "Status",
-    loading: "Loading"
+    loading: "Loading",
+    voiceListening: "Listening...",
+    voiceSpeaking: "Speaking...",
+    processing: "Processing...",
+    noVoiceSupport: "Voice recognition not supported in this browser. Use Chrome.",
+    clearCart: "Clear Cart",
+    itemsInCart: "items in cart",
+    changeLanguage: "Change Language",
+    confirmAdd: "Success! Added to cart.",
+    langChanged: "Language changed to English"
   },
   ta: {
     langName: "தமிழ்",
@@ -191,7 +200,8 @@ const TRANSLATIONS = {
     offerings: "வழிபாடுகள்",
     items: "பொருட்கள்",
     status: "நிலை",
-    loading: "எடுக்கிறது"
+    loading: "எடுக்கிறது",
+    langChanged: "மொழி தமிழுக்கு மாற்றப்பட்டது"
   },
   te: {
     langName: "తెలుగు",
@@ -264,7 +274,8 @@ const TRANSLATIONS = {
     offerings: "పూజలు",
     items: "అంశాలు",
     status: "స్థితి",
-    loading: "లోడ్ అవుతోంది"
+    loading: "లోడ్ అవుతోంది",
+    langChanged: "భాష తెలుగులోకి మార్చబడింది"
   },
   ml: {
     langName: "മലയാളം",
@@ -338,7 +349,8 @@ const TRANSLATIONS = {
     offerings: "വഴിപാടുകൾ",
     items: "ഇനങ്ങൾ",
     status: "സ്ഥിതി",
-    loading: "ലോഡ് ചെയ്യുന്നു"
+    loading: "ലോഡ് ചെയ്യുന്നു",
+    langChanged: "ഭാഷ മലയാളത്തിലേക്ക് മാറ്റി"
   },
   kn: {
     langName: "ಕನ್ನಡ",
@@ -412,7 +424,8 @@ const TRANSLATIONS = {
     offerings: "ಪೂಜೆಗಳು",
     items: "ಐಟಂಗಳು",
     status: "ಸ್ಥಿತಿ",
-    loading: "ಲೋಡ್ ಆಗುತ್ತಿದೆ"
+    loading: "ಲೋಡ್ ಆಗುತ್ತಿದೆ",
+    langChanged: "ಭಾಷೆಯನ್ನು ಕನ್ನಡಕ್ಕೆ ಬದಲಾಯಿಸಲಾಗಿದೆ"
   }
 };
 

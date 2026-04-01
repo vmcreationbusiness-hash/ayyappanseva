@@ -36,10 +36,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
-  state.language = 'en'; // Default English
+  // Load saved language or default to English
+  const savedLang = localStorage.getItem('ayyappa_lang');
+  state.language = savedLang && TRANSLATIONS[savedLang] ? savedLang : 'en';
+
   loadConfigAndServices().then(() => {
+    // Set default service if none selected
+    if (!state.service && state.config.services.length > 0) {
+      state.service = state.config.services[0];
+    } else if (!state.service) {
+      state.service = { id: 'archana', name: t('archana'), price: 10, icon: '🪷' };
+    }
     renderNavbar();
-    renderServiceScreen();
+    renderDashboard();
   });
   loadSettings();
   setupVoiceOverlay();
@@ -68,25 +77,19 @@ function renderNavbar() {
 
   // 2. Render Contextual Actions
   const activeScreen = document.querySelector('.screen.active');
-  const screenId = activeScreen ? activeScreen.id : 'screen-service';
+  const screenId = activeScreen ? activeScreen.id : 'screen-dashboard';
   
   let actionsHtml = '';
   
-  if (screenId === 'screen-service') {
+  if (screenId === 'screen-dashboard') {
     actionsHtml = `
       <button class="btn-menu" onclick="renderOrdersScreen()">
         📋 <span>${t('orderHistory')}</span>
       </button>
     `;
-  } else if (screenId === 'screen-entry') {
-    actionsHtml = `
-      <button class="btn-menu" onclick="renderServiceScreen()">
-        ◀ <span>${t('changeService')}</span>
-      </button>
-    `;
   } else if (screenId === 'screen-orders') {
     actionsHtml = `
-      <button class="btn-menu" onclick="renderServiceScreen()">
+      <button class="btn-menu" onclick="renderDashboard()">
         🏠 <span>${t('backToHome')}</span>
       </button>
     `;
@@ -104,7 +107,10 @@ function renderNavbar() {
   // 3. Update Title if needed
   if (titleEl) {
      if (screenId === 'screen-orders') titleEl.textContent = t('orderHistory');
-     else titleEl.textContent = state.config.merchantName || "Swami Ayyappa Temple";
+     else {
+        const isDefault = !state.config.merchantName || state.config.merchantName === "Swami Ayyappa Temple";
+        titleEl.textContent = isDefault ? t('welcome') : state.config.merchantName;
+     }
   }
 }
 
@@ -115,18 +121,23 @@ function setLanguage(lang) {
   // Re-render current screen
   const activeScreen = document.querySelector('.screen.active');
   if (activeScreen) {
-    if (activeScreen.id === 'screen-service') renderServiceScreen();
-    else if (activeScreen.id === 'screen-entry') renderEntryScreen();
+  // Re-render UI
+  const activeScreen = document.querySelector('.screen.active');
+  if (activeScreen) {
+    if (activeScreen.id === 'screen-dashboard') renderDashboard();
     else if (activeScreen.id === 'screen-orders') renderOrdersScreen();
-    else if (activeScreen.id === 'screen-invoice') { /* invoice usually static once generated */ }
+  }
   }
   
   renderSettingsOfferings();
-  showToast('Language changed to ' + TRANSLATIONS[lang].langName);
+  showToast(TRANSLATIONS[lang].langName + ' settings applied');
   
-  // Voice confirmation of language change
-  const msg = lang === 'en' ? 'Language changed to English' : t('confirmAdd'); // Fallback or specific message
-  speak(TRANSLATIONS[lang].welcome); // Welcoming in the new language is more divine
+  // Save preference
+  localStorage.setItem('ayyappa_lang', lang);
+  
+  // Voice confirmation
+  const msg = t('langChanged');
+  speak(msg);
 }
 
 // ── Utility Functions ──
@@ -243,149 +254,142 @@ function showToast(message, type = 'success') {
 // ═══════════════════════════════════════════════════════════
 //  SCREEN 1: SERVICE SELECTION (LANDING PAGE)
 // ═══════════════════════════════════════════════════════════
-function renderServiceScreen() {
-  const screen = document.getElementById('screen-service');
-  
-  // Use services from config if available, else fallback
+// ═══════════════════════════════════════════════════════════
+//  SINGLE PAGE UNIFIED DASHBOARD
+// ═══════════════════════════════════════════════════════════
+
+function renderDashboard() {
+  const container = document.getElementById('screen-dashboard');
+  if (!container) return;
+
   const services = state.config.services.length > 0 ? state.config.services : [
     { id: 'archana', name: t('archana'), price: 10, icon: '🪷', details: t('archanaDesc') },
     { id: 'gheeVizhaku', name: t('gheeVizhaku'), price: 50, icon: '🪔', details: t('gheeVizhakuDesc') },
     { id: 'coconutVizhaku', name: t('coconutVizhaku'), price: 30, icon: '🥥', details: t('coconutVizhakuDesc') }
   ];
 
-  const serviceCards = services.map(s => `
-    <div class="service-card" onclick="selectService(${JSON.stringify(s).replace(/"/g, '&quot;')})">
-      <div class="service-icon">${s.icon}</div>
-      <div class="service-name">${t(s.id) || s.name}</div>
-      <div class="service-desc">${t(s.id + 'Desc') || s.details}</div>
-      <div class="service-price">₹${s.price}</div>
-    </div>
-  `).join('');
-
-  screen.innerHTML = `
-    <div class="screen-main">
-      <div class="temple-header" style="margin-bottom:8px;">
-        <div class="temple-icon" style="font-size:32px; margin-bottom:4px;">🕉️</div>
-        <h1 style="font-size:1.2rem; margin:0;">${t('welcome')}</h1>
-        <p style="font-size:0.8rem; margin:0; opacity:0.8;">${t('subtitle')}</p>
-      </div>
-      <div class="section-title">${t('selectService')}</div>
-      <div class="service-grid" style="margin-top:0;">
-        ${serviceCards}
-      </div>
-    </div>
-  `;
-  showScreen('screen-service');
-}
-
-function selectService(serviceObj) {
-  state.service = serviceObj;
-  renderEntryScreen();
-}
-
-// ═══════════════════════════════════════════════════════════
-//  SCREEN 2: DEVOTEE DETAILS & PAYMENT (SINGLE PAGE)
-// ═══════════════════════════════════════════════════════════
-function renderEntryScreen() {
   const nakshatras = getNakshatras();
-  const nakshatraOptions = nakshatras.map((n, i) =>
-    `<option value="${n}">${n}</option>`
-  ).join('');
-
+  const nakshatraOptions = nakshatras.map(n => `<option value="${n}">${n}</option>`).join('');
   const total = state.cart.reduce((sum, item) => sum + item.price, 0);
 
-  const screen = document.getElementById('screen-entry');
-  screen.innerHTML = `
-    <div class="screen-main">
-      <div class="split-layout">
-        <!-- Column 1: Devotee Details -->
-        <div class="split-col">
-          <div class="section-title" style="margin-bottom:8px;">${t('enterDetails')}</div>
-          <button class="voice-order-btn" style="width:100%; margin-bottom:10px; margin-top:0; padding:10px;" onclick="startVoiceOrderFlow()">
-            <span class="voice-icon-pulsing">🎤</span>
-            ${t('voiceOrder')} (Quick Add)
+  container.innerHTML = `
+    <div class="dashboard-container">
+      
+      <!-- Col 1: Services -->
+      <div class="dash-col services-sidebar">
+        <div class="cart-sidebar-title">🕉️ ${t('selectService')}</div>
+        <div class="cart-items-scroll" style="padding:0;">
+          ${services.map(s => `
+            <div class="dash-service-item ${state.service && state.service.id === s.id ? 'active' : ''}" 
+                 onclick="selectService(${JSON.stringify(s).replace(/"/g, '&quot;')})">
+              <div class="icon">${s.icon}</div>
+              <div class="info">
+                <div class="name">${t(s.id) || s.name}</div>
+                <div class="price">₹${s.price}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Col 2: Form Area -->
+      <div class="dash-col entry-area">
+        <div style="max-width:600px; margin:0 auto;">
+          <div class="temple-header" style="margin-bottom:20px;">
+            <div class="temple-icon" style="font-size:42px; margin-bottom:8px;">🕉️</div>
+            <h1 style="color:var(--primary-dark);">${t('welcome')}</h1>
+            <p style="opacity:0.8;">${t('subtitle')}</p>
+          </div>
+
+          <button class="voice-order-btn" style="width:100%; margin-bottom:15px; margin-top:0;" onclick="startVoiceOrderFlow()">
+            🎤 ${t('voiceOrder')} (Quick Add)
           </button>
 
           <div class="form-card">
-            <div style="text-align:center; margin-bottom: 12px;">
-              <div class="current-service-badge">
-                ${state.service.icon} ${enT(state.service.id) || state.service.name} — ₹${state.service.price}
-              </div>
-            </div>
-            
-            <div class="form-group" style="margin-bottom:10px;">
-              <label for="devotee-name" style="margin-bottom:5px; font-size:0.85rem;">${t('devoteeName')}</label>
-              <div class="input-wrapper">
-                <input type="text" id="devotee-name" placeholder="${t('enterName')}" autocomplete="off" style="padding:10px 14px; font-size:0.9rem;">
-                <button class="btn-voice" style="width:40px; height:40px; font-size:16px;" onclick="startVoiceInput('name')" title="${t('voiceInput')}">
-                  🎤
-                </button>
+            <div style="text-align:center; margin-bottom:15px;">
+              <div class="current-service-badge" style="font-size:1.1rem; padding:10px 24px;">
+                ${state.service ? state.service.icon + ' ' + (t(state.service.id) || state.service.name) : 'Select Service'} — ₹${state.service ? state.service.price : '0'}
               </div>
             </div>
 
-            <div class="form-group" style="margin-bottom:10px;">
-              <label for="devotee-star" style="margin-bottom:5px; font-size:0.85rem;">${t('selectStar')}</label>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label style="display:block; margin-bottom:5px; font-weight:600;">${t('devoteeName')}</label>
               <div class="input-wrapper">
-                <select id="devotee-star" style="padding:10px 14px; font-size:0.9rem;">
+                <input type="text" id="devotee-name" placeholder="${t('enterName')}" autocomplete="off" style="width:100%; padding:12px;">
+                <button class="btn-voice" onclick="startVoiceInput('name')">🎤</button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+              <label style="display:block; margin-bottom:5px; font-weight:600;">${t('selectStar')}</label>
+              <div class="input-wrapper">
+                <select id="devotee-star" style="width:100%; padding:12px;">
                   <option value="">${t('chooseStar')}</option>
                   ${nakshatraOptions}
                 </select>
-                <button class="btn-voice" style="width:40px; height:40px; font-size:16px;" onclick="startVoiceInput('star')" title="${t('voiceInput')}">
-                  🎤
-                </button>
+                <button class="btn-voice" onclick="startVoiceInput('star')">🎤</button>
               </div>
             </div>
 
-            <button class="btn btn-primary btn-full" onclick="addDevoteeToCart()" style="padding:10px; font-size:0.9rem;">
+            <button class="btn btn-primary btn-full" style="padding:15px; font-size:1.1rem; margin-top:10px; width:100%;" onclick="addDevoteeToCart()">
               ➕ ${t('addToCart')}
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- Column 2: Cart -->
-        <div class="split-col">
-           <div class="section-title" style="margin-bottom:8px;">🛒 ${t('cart')}</div>
-           <div class="cart-sidebar">
-            <div class="cart-items-scroll">
-              ${state.cart.length === 0 ? `
-                <div class="cart-sidebar-empty" style="text-align:center; padding:40px 0; color:var(--text-muted);">
-                  <div class="empty-icon" style="font-size:40px; opacity:0.3;">🛒</div>
-                  <p>Empty</p>
-                </div>
-              ` : state.cart.map(item => `
-                <div class="cart-item" style="padding:8px; gap:8px;">
-                  <div class="cart-item-info">
-                    <div class="cart-item-name" style="font-size:0.8rem;">${item.name}</div>
-                    <div class="cart-item-detail" style="font-size:0.65rem;">${item.serviceIcon} ${enT(item.service) || item.serviceName} • ${item.starEn || item.star}</div>
-                  </div>
-                  <span class="cart-item-price" style="font-size:0.8rem;">₹${item.price}</span>
-                  <button class="cart-item-remove" style="font-size:0.8rem;" onclick="removeDevotee(${item.id})">✕</button>
-                </div>
-              `).join('')}
+      <!-- Col 3: Sidebar Checkout -->
+      <div class="dash-col checkout-sidebar">
+        <div class="cart-sidebar-title">🛒 ${t('cart')}</div>
+        <div class="cart-items-scroll">
+          ${state.cart.length === 0 ? `
+            <div style="text-align:center; padding:60px 0; color:var(--text-muted); opacity:0.5;">
+              <div style="font-size:50px;">🛍️</div>
+              <p>Empty</p>
             </div>
-            ${state.cart.length > 0 ? `
-              <div class="cart-sidebar-total" style="padding:10px 15px;">
-                <span class="total-label" style="font-size:0.8rem;">Total</span>
-                <span class="total-amount" style="font-size:1.1rem;">₹${total}</span>
+          ` : state.cart.map(item => `
+            <div class="cart-item">
+              <div class="cart-item-info">
+                <div class="cart-item-name" style="font-weight:700;">${item.name}</div>
+                <div class="cart-item-detail" style="font-size:0.75rem;">${item.serviceIcon} ${t(item.service) || item.serviceName} • ${item.star}</div>
               </div>
-            ` : ''}
-          </div>
+              <div style="text-align:right;">
+                <div class="cart-item-price" style="font-weight:800;">₹${item.price}</div>
+                <button class="cart-item-remove" style="color:red; background:none; border:none; cursor:pointer;" onclick="removeDevotee(${item.id})">✕ Clear</button>
+              </div>
+            </div>
+          `).join('')}
         </div>
 
-        <!-- Column 3: Payment -->
-        <div class="split-col">
-          <div class="section-title" style="margin-bottom:8px;">💳 Payment</div>
-          ${state.cart.length > 0 ? renderPaymentSection(total) : `
-            <div class="form-card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px; color:var(--text-muted); opacity:0.5;">
-               <div style="font-size:32px;">🛒</div>
-               <p style="font-size:0.85rem;">Add items to pay</p>
+        <div class="payment-wrapper" style="padding:15px; border-top:2px solid var(--primary-glow); background:white;">
+          ${state.cart.length > 0 ? `
+            <div class="cart-sidebar-total" style="display:flex; justify-content:space-between; margin-bottom:10px;">
+              <span style="font-weight:700;">Subtotal</span>
+              <span style="font-weight:800; color:var(--secondary); font-size:1.2rem;">₹${total}</span>
+            </div>
+            ${renderPaymentSection(total)}
+          ` : `
+            <div style="height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted); border:2px dashed #eee; border-radius:12px;">
+              <p>Add services to proceed</p>
             </div>
           `}
         </div>
       </div>
     </div>
   `;
-  showScreen('screen-entry');
+  showScreen('screen-dashboard');
+}
+
+function selectService(serviceObj) {
+  state.service = serviceObj;
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCREEN 2: DEVOTEE DETAILS & PAYMENT (SINGLE PAGE)
+// ═══════════════════════════════════════════════════════════
+function renderDashboardScreenFallback() {
+  // This replaces renderEntryScreen
 }
 
 function renderPaymentSection(total) {
@@ -554,22 +558,15 @@ function closeInvoiceModal() {
   // If we were in the middle of a checkout (cart not empty), clear and reset
   if (state.cart.length > 0) {
     state.cart = [];
-    state.service = null;
     state.invoiceNo = null;
-    renderServiceScreen();
+    renderDashboard();
   }
-}
-
-function renderInvoiceScreen() {
-  // Deprecated - using showInvoiceModal instead
-  showInvoiceModal();
 }
 
 function resetFlow() {
   state.cart = [];
-  state.service = null;
   state.invoiceNo = null;
-  renderServiceScreen();
+  renderDashboard();
 }
 
 function printInvoice() {
@@ -1296,12 +1293,10 @@ async function startSarvamSTT(field) {
         formData.append('file', audioBlob, `audio.${extension}`);
         formData.append('model', 'saaras:v3');
         formData.append('language_code', langCode);
+        formData.append('apiKey', SARVAM_API_KEY);
 
-        const response = await fetch('https://api.sarvam.ai/speech-to-text', {
+        const response = await fetch('/api/proxy/sarvam-stt', {
           method: 'POST',
-          headers: {
-            'api-subscription-key': SARVAM_API_KEY
-          },
           body: formData
         });
 
@@ -1441,16 +1436,67 @@ function startVolumeMeter(stream) {
     const SILENCE_WAIT_MS = 2200; // Finish quicker after pause
     const INITIAL_SILENCE_LIMIT = 4000; // Auto-stop if no speech heard at ALL for 4s
 
+    const canvas = document.getElementById('voice-visualizer');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    let waveHistory = [];
+    if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        waveHistory = new Array(Math.floor(rect.width)).fill(0);
+    }
+
+    isListening = true; // Ensure early flag set for visualizer
     function update() {
       if (!isListening || !window._audioContext) return;
-      analyser.getByteFrequencyData(dataArray);
-      let sum = 0;
-      for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-      let average = sum / bufferLength;
       
-      // Scale to 100%
-      let vol = Math.min(100, Math.pow(average / 128, 0.5) * 100);
+      let average = 0;
+      let vol = 0;
+
+      if (document.body.classList.contains('bot-speaking')) {
+          average = (Math.sin(Date.now() / 150) + 1) * 15;
+          vol = 10;
+      } else {
+          try {
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+            average = sum / bufferLength;
+            vol = Math.min(100, Math.pow(average / 128, 0.5) * 100);
+          } catch(e) { average = 0; vol = 0; }
+      }
+      
       if (volBar) volBar.style.width = vol + '%';
+
+      if (ctx && canvas) {
+          const rect = canvas.getBoundingClientRect();
+          ctx.clearRect(0, 0, rect.width, rect.height);
+          
+          waveHistory.shift();
+          waveHistory.push(average);
+          
+          ctx.beginPath();
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          
+          const grad = ctx.createLinearGradient(0, 0, rect.width, 0);
+          grad.addColorStop(0, '#B8860B'); 
+          grad.addColorStop(1, '#FFD700');
+          ctx.strokeStyle = grad;
+
+          const centerY = rect.height / 2;
+          for (let i = 0; i < waveHistory.length; i++) {
+              const x = i;
+              const magnitude = (waveHistory[i] / 128) * (rect.height / 2);
+              const y = centerY + (magnitude * Math.sin(i * 0.05 + Date.now()/200));
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+      }
 
       // Advanced Silence Detection for REST STT engines
       if (vol > SILENCE_THRESHOLD) {
@@ -1798,6 +1844,7 @@ function listenForSpeechSarvam() {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
       });
+      isListening = true;
       startVolumeMeter(stream);
       const mimeType = getSupportedMimeType();
       mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -1831,10 +1878,11 @@ function listenForSpeechSarvam() {
           const formData = new FormData();
           formData.append('file', audioBlob, `audio.${extension}`);
           formData.append('model', 'saaras:v3');
+          formData.append('language_code', langCode);
+          formData.append('apiKey', SARVAM_API_KEY);
 
-          const response = await fetch('https://api.sarvam.ai/speech-to-text', {
+          const response = await fetch('/api/proxy/sarvam-stt', {
             method: 'POST',
-            headers: { 'api-subscription-key': SARVAM_API_KEY },
             body: formData
           });
 
@@ -1859,7 +1907,6 @@ function listenForSpeechSarvam() {
       };
 
       mediaRecorder.start(1000); // 1s timeslices to ensure chunks are populated
-      isListening = true;
       console.log('🎤 Sarvam recorder started... timesliced.');
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -1878,6 +1925,7 @@ function listenForSpeechGoogle() {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
       });
+      isListening = true;
       startVolumeMeter(stream);
       const mimeType = getSupportedMimeType();
       mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -1927,7 +1975,6 @@ function listenForSpeechGoogle() {
       };
 
       mediaRecorder.start(1000);
-      isListening = true;
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
@@ -1981,7 +2028,6 @@ function listenForSpeechReverie() {
       };
 
       mediaRecorder.start();
-      isListening = true;
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
@@ -1999,6 +2045,7 @@ async function listenForSpeechOpenAI() {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } 
       });
+      isListening = true;
       startVolumeMeter(stream);
       const mimeType = getSupportedMimeType();
       mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -2044,7 +2091,6 @@ async function listenForSpeechOpenAI() {
       };
 
       mediaRecorder.start(1000);
-      isListening = true;
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
