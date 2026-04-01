@@ -595,10 +595,9 @@ function printInvoice() {
 
 function startNewOrder() {
   state.cart = [];
-  state.service = null;
   state.invoiceNo = null;
   state.nextId = 1;
-  renderServiceScreen();
+  renderDashboard();
 }
 
 // ═══════════════════════════════════════════════════════════
