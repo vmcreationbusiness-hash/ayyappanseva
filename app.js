@@ -2852,6 +2852,18 @@ function applySettingsObject(settings) {
     const bgImage = document.querySelector('.bg-image');
     if (bgImage) bgImage.style.backgroundImage = `url('${settings.bgUrl}')`;
   }
+
+  // Visual Accessibility (New)
+  if (settings.uiZoom != null) {
+     const s = document.getElementById('ui-zoom-slider');
+     if (s) s.value = settings.uiZoom;
+     updateUiZoom(settings.uiZoom, true);
+  }
+  if (settings.fontScale != null) {
+     const s = document.getElementById('font-scale-slider');
+     if (s) s.value = settings.fontScale;
+     updateFontScale(settings.fontScale, true);
+  }
 }
 
 function loadSettings() {
@@ -2886,37 +2898,45 @@ function loadSettings() {
 
 async function loadSettingsFromCloud() {
   try {
-    const res = await fetch(SETTINGS_API_URL, { method: 'GET' });
-    if (!res.ok) {
-      // 404 = no saved settings yet in DB, that's fine
-      if (res.status !== 404) console.warn('⚠️ Could not load cloud settings:', res.status);
-      return;
+    const res = await fetch(SETTINGS_API_URL);
+    if (res.ok) {
+      const settings = await res.json();
+      if (settings) {
+        applySettingsObject(settings);
+      }
     }
-    const settings = await res.json();
-
-    // Apply cloud settings (they are the source of truth)
-    applySettingsObject(settings);
-
-    // Also sync to localStorage so next load is instant
-    try {
-      localStorage.setItem('ayyappa_settings', JSON.stringify({
-        theme:          settings.theme,
-        bgOpacity:      settings.bgOpacity,
-        bgSize:         settings.bgSize,
-        cardOpacity:    settings.cardOpacity,
-        overlayColor:   settings.overlayColor,
-        overlayOpacity: settings.overlayOpacity,
-        colorBg:        settings.colorBg,
-        colorPrimary:   settings.colorPrimary,
-        colorText:      settings.colorText
-      }));
-    } catch (e) { /* ignore */ }
-
-    console.log('✅ Settings loaded from MongoDB');
   } catch (e) {
-    // Network error — already using localStorage version, no action needed
-    console.warn('⚠️ Could not reach settings API (using local):', e.message);
+    console.warn('Cloud settings fetch failed:', e);
   }
+}
+
+// ── Visual Accessibility Functions ──
+function updateUiZoom(val, skipSave = false) {
+  const container = document.querySelector('.dashboard-container');
+  const label = document.getElementById('ui-zoom-value');
+  if (label) label.textContent = `${val}%`;
+  if (container) {
+    container.style.zoom = val / 100;
+  }
+  if (!skipSave) syncSettings({ uiZoom: parseInt(val) });
+}
+
+function updateFontScale(val, skipSave = false) {
+  const label = document.getElementById('font-scale-value');
+  if (label) label.textContent = `${val}%`;
+  document.documentElement.style.setProperty('--font-global-scale', val / 100);
+  if (!skipSave) syncSettings({ fontScale: parseInt(val) });
+}
+
+function syncSettings(newValues) {
+  const saved = localStorage.getItem('ayyappa_settings');
+  const settings = saved ? JSON.parse(saved) : {};
+  const updated = { ...settings, ...newValues };
+  localStorage.setItem('ayyappa_settings', JSON.stringify(updated));
+  
+  // Cloud Sync (Debounced)
+  clearTimeout(_settingsSaveTimer);
+  _settingsSaveTimer = setTimeout(() => saveSettingsToCloud(updated), 500);
 }
 
 // ── Color Utility Functions ──

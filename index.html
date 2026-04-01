@@ -222,6 +222,23 @@
       </div>
     </div>
 
+    <!-- Visual Accessibility -->
+    <div class="settings-section">
+      <div class="settings-section-title">🖥️ Interface Accessibility</div>
+      <div class="settings-row">
+        <span class="settings-label">Dashboard Zoom</span>
+        <input type="range" class="settings-slider" id="ui-zoom-slider" min="60" max="140" value="100"
+          oninput="updateUiZoom(this.value)">
+        <span class="settings-value" id="ui-zoom-value">100%</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">Global Font Size</span>
+        <input type="range" class="settings-slider" id="font-scale-slider" min="70" max="150" value="100"
+          oninput="updateFontScale(this.value)">
+        <span class="settings-value" id="font-scale-value">100%</span>
+      </div>
+    </div>
+
     <!-- Theme Presets -->
     <div class="settings-section">
       <div class="settings-section-title">🎨 Theme Presets</div>
