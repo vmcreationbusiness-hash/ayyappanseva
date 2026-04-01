@@ -4,7 +4,6 @@
 // ═══════════════════════════════════════════════════════════
 
 // ── State ──
-// ── State ──
 const state = {
   language: 'en',
   service: null,
@@ -1928,14 +1927,17 @@ function listenForSpeechSarvam() {
         if (audioBlob.size < 100) {
             console.warn('⚠️ Audio blob too small. Check microphone input.');
         }
-        const langCode = SARVAM_LANG_CODES[state.language] || 'en-IN';
-        const extension = safeMimeType.includes('mp4') ? 'mp4' : (safeMimeType.includes('ogg') ? 'ogg' : 'webm');
+        const sarvamLang = (state.language === 'en') ? 'en-IN' : 
+                          (state.language === 'ta') ? 'ta-IN' : 
+                          (state.language === 'te') ? 'te-IN' : 
+                          (state.language === 'kn') ? 'kn-IN' : 
+                          (state.language === 'ml') ? 'ml-IN' : 'en-IN';
         
         try {
           const formData = new FormData();
-          formData.append('file', audioBlob, `audio.${extension}`);
-          formData.append('model', 'saaras:v3');
-          formData.append('language_code', langCode);
+          formData.append('file', audioBlob, `audio.webm`);
+          formData.append('model', 'saaras:v1'); // Corrected to v1
+          formData.append('language_code', sarvamLang);
           formData.append('apiKey', SARVAM_API_KEY);
 
           const response = await fetch('/api/proxy/sarvam-stt', {
