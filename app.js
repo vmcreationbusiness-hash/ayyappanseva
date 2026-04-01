@@ -360,11 +360,11 @@ function renderDashboard() {
           `).join('')}
         </div>
 
-        <div class="payment-wrapper" style="padding:15px; border-top:2px solid var(--primary-glow); background:white;">
+        <div class="payment-wrapper" style="padding:10px; border-top:1px solid var(--border); background:white;">
           ${state.cart.length > 0 ? `
-            <div class="cart-sidebar-total" style="display:flex; justify-content:space-between; margin-bottom:10px;">
-              <span style="font-weight:700;">Subtotal</span>
-              <span style="font-weight:800; color:var(--secondary); font-size:1.2rem;">₹${total}</span>
+            <div class="cart-sidebar-total" style="display:flex; justify-content:space-between; margin-bottom:5px; padding:8px 12px; background:var(--bg-secondary); border-radius:10px;">
+              <span style="font-weight:700; font-size:0.8rem;">Subtotal</span>
+              <span style="font-weight:800; color:var(--secondary); font-size:1.1rem;">₹${total}</span>
             </div>
             ${renderPaymentSection(total)}
           ` : `
@@ -405,15 +405,15 @@ function renderPaymentSection(total) {
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(upiLink)}`;
 
   return `
-    <div class="form-card" style="text-align:center; height:100%; display:flex; flex-direction:column; justify-content:center; padding:10px; margin-top:0; max-width:280px; margin-left:auto; margin-right:auto;">
+    <div class="form-card" style="text-align:center; height:auto; display:flex; flex-direction:column; justify-content:center; padding:8px; margin-top:5px; max-width:280px; margin-left:auto; margin-right:auto; box-shadow:none; border:1px dashed var(--border);">
        <div>
-         <h4 style="margin-bottom:8px; color:var(--primary-dark); font-size:0.8rem;">Secure UPI Payment</h4>
-         <div class="upi-qr" style="max-width:110px; margin:0 auto; border:1px solid var(--border-light); padding:5px; background:white;">
+         <h4 style="margin-bottom:5px; color:var(--primary-dark); font-size:0.75rem;">Secure UPI Payment</h4>
+         <div class="upi-qr" style="max-width:85px; margin:0 auto; border:1px solid var(--border-light); padding:4px; background:white;">
             <img src="${qrUrl}" alt="QR" style="width:100%; height:100%; display:block;">
          </div>
-         <div style="margin-top:6px; font-size:0.75rem; font-weight:600; color:var(--text-muted);">${upiId}</div>
+         <div style="margin-top:4px; font-size:0.7rem; font-weight:600; color:var(--text-muted); opacity:0.8;">${upiId}</div>
        </div>
-       <button class="btn btn-success btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:10px; padding:10px; font-size:0.9rem;">
+       <button class="btn btn-success btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:8px; padding:10px; font-size:0.9rem; border-radius:12px;">
          💳 Pay & Print Invoice
        </button>
     </div>
