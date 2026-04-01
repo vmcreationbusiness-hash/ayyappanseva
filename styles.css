@@ -67,11 +67,11 @@
 
 .dashboard-container {
   display: flex;
-  width: 70%;  /* Reduced to 70% as requested */
-  max-width: 1400px;
-  height: 80vh;
+  width: 76%;  /* Increased width for slightly larger center screen as requested */
+  max-width: 1550px;
+  height: 82vh;
   min-height: 520px;
-  gap: 20px;
+  gap: 15px;
   padding: 0;
   overflow: hidden;
   position: relative;
@@ -130,13 +130,43 @@
 .entry-area .btn-primary { padding: 12px !important; font-size: 1rem !important; margin-top: 5px !important; border-radius: 14px !important; }
 
 .checkout-sidebar { 
-  flex: 0 0 290px; 
+  flex: 0 0 310px; 
   background: var(--bg-card); 
   border: 1px solid var(--border); 
   box-shadow: var(--shadow-sm); 
   border-radius: var(--radius); 
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
+}
+
+.cart-items-scroll {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 50vh; /* Dynamic cart length based on screen height */
+  padding-bottom: 10px;
+  scrollbar-width: thin;
+}
+
+#invoice-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#invoice-modal-overlay.active {
+  display: flex;
+  opacity: 1;
 }
 
 .cart-items-scroll {

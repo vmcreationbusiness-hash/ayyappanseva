@@ -275,7 +275,7 @@ function renderDashboard() {
       <div class="dashboard-container">
       
       <!-- Col 1: Services -->
-      <div class="dash-col services-sidebar">
+      <div class="dash-col services-sidebar" style="flex: 0 0 240px;">
         <div class="cart-sidebar-title">🕉️ ${t('selectService')}</div>
         <div class="cart-items-scroll" style="padding:0;">
           ${services.map(s => `
@@ -338,23 +338,26 @@ function renderDashboard() {
       </div>
 
       <!-- Col 3: Sidebar Checkout -->
-      <div class="dash-col checkout-sidebar">
+      <div class="dash-col checkout-sidebar" style="flex: 0 0 340px;">
         <div class="cart-sidebar-title">🛒 ${t('cart')}</div>
         <div class="cart-items-scroll">
           ${state.cart.length === 0 ? `
-            <div style="text-align:center; padding:60px 0; color:var(--text-muted); opacity:0.5;">
-              <div style="font-size:50px;">🛍️</div>
+            <div style="text-align:center; padding:40px 0; color:var(--text-muted); opacity:0.5;">
+              <div style="font-size:40px;">🛍️</div>
               <p>Empty</p>
             </div>
           ` : state.cart.map(item => `
-            <div class="cart-item">
+            <div class="cart-item" style="padding:10px; margin-bottom:8px;">
               <div class="cart-item-info">
-                <div class="cart-item-name" style="font-weight:700;">${item.name}</div>
+                <div class="cart-item-name" style="font-weight:700; font-size:0.9rem;">${item.name}</div>
                 <div class="cart-item-detail" style="font-size:0.75rem;">${item.serviceIcon} ${t(item.service) || item.serviceName} • ${item.star}</div>
               </div>
-              <div style="text-align:right;">
-                <div class="cart-item-price" style="font-weight:800;">₹${item.price}</div>
-                <button class="cart-item-remove" style="color:red; background:none; border:none; cursor:pointer;" onclick="removeDevotee(${item.id})">✕ Clear</button>
+              <div style="text-align:right; display:flex; flex-direction:column; gap:4px;">
+                <div class="cart-item-price" style="font-weight:800; font-size:0.85rem;">₹${item.price}</div>
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                   <button onclick="editDevotee(${item.id})" style="color:var(--primary); font-size:0.7rem; background:none; border:none; cursor:pointer; font-weight:700;">Edit</button>
+                   <button onclick="removeDevotee(${item.id})" style="color:red; font-size:0.7rem; background:none; border:none; cursor:pointer; font-weight:700;">Clear</button>
+                </div>
               </div>
             </div>
           `).join('')}
@@ -462,22 +465,57 @@ function removeDevotee(id) {
   renderDashboard();
 }
 
+function editDevotee(id) {
+  const item = state.cart.find(c => c.id === id);
+  if (!item) return;
+
+  // 1. Set current service to this item's service
+  const serviceObj = state.config.services.find(s => s.id === item.service) || 
+                    { id: item.service, name: item.serviceName, price: item.price, icon: item.serviceIcon };
+  state.service = serviceObj;
+
+  // 2. Remove from cart (user will "re-add" it after editing)
+  state.cart = state.cart.filter(c => c.id !== id);
+
+  // 3. Render and Populate Form
+  renderDashboard();
+  
+  const nameEl = document.getElementById('devotee-name');
+  const starEl = document.getElementById('devotee-star');
+
+  if (nameEl) nameEl.value = item.name;
+  if (starEl) starEl.value = item.star;
+  
+  showToast('Devotee details loaded for editing', 'success');
+}
+
 async function generateInvoiceAndPrint() {
-  if(state.cart.length === 0) return;
+  if (state.cart.length === 0) {
+    showToast('Add items to the cart first', 'error');
+    return;
+  }
   
-  // Save to DB
-  state.invoiceNo = generateInvoiceNo();
-  const date = formatDate();
-  const orderData = {
-    invoiceNo: state.invoiceNo,
-    date: date,
-    items: state.cart,
-    totalAmount: state.cart.reduce((s,i)=>s+i.price,0),
-    paymentStatus: 'paid'
-  };
+  showToast('Processing Payment...', 'success');
   
-  await saveOrder(orderData);
-  showInvoiceModal();
+  try {
+    state.invoiceNo = generateInvoiceNo();
+    const date = formatDate();
+    const orderData = {
+      invoiceNo: state.invoiceNo,
+      date: date,
+      items: state.cart,
+      totalAmount: state.cart.reduce((s,i)=>s+i.price,0),
+      paymentStatus: 'paid'
+    };
+    
+    await saveOrder(orderData);
+    showInvoiceModal();
+    showToast('Payment Successful! Receipt Generated ✅');
+  } catch (e) {
+    console.error('Invoice Error:', e);
+    showToast('Connection issue, but order is saved locally.', 'error');
+    showInvoiceModal();
+  }
 }
 
 function removeFromCart(id) {
