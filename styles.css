@@ -100,15 +100,23 @@
   flex: 1; 
   background: var(--bg-card); 
   border: 1px solid var(--border); 
-  padding: 20px 25px; /* Compact padding */
-  overflow-y: hidden; /* NO SCROLL for form entry */
+  padding: 15px 20px; /* Reduced vertical padding */
+  overflow-y: hidden; 
   box-shadow: var(--shadow-md); 
   border-radius: var(--radius); 
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  font-size: clamp(0.75rem, 0.9vw, 1rem); /* Dynamic global text scaling */
 }
+
+/* Slimmer Form Elements */
+.entry-area .form-group { margin-bottom: 8px !important; }
+.entry-area .temple-header h1 { font-size: clamp(1.2rem, 2vw, 1.8rem) !important; margin-bottom: 5px !important; }
+.entry-area select, .entry-area input { padding: 8px 12px !important; font-size: 0.9rem !important; }
+.entry-area .btn-primary { padding: 10px !important; font-size: 0.95rem !important; margin-top: 5px !important; }
+
 .checkout-sidebar { 
-  flex: 0 0 320px; /* Slimmed checkout */
+  flex: 0 0 300px; 
   background: var(--bg-card); 
   border: 1px solid var(--border); 
   box-shadow: var(--shadow-sm); 
@@ -120,18 +128,18 @@
 .cart-items-scroll {
   flex: 1;
   overflow-y: auto;
-  padding-bottom: 20px;
+  padding-bottom: 10px;
 }
 
-/* Service List Item (Desktop) */
+/* Service List Item (Desktop - Compact) */
 .dash-service-item {
-  padding: 18px 20px;
+  padding: 12px 15px; /* Slimmer rows */
   border-bottom: 1px solid var(--border-light);
   cursor: pointer;
   transition: var(--transition);
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
   position: relative;
 }
 
@@ -146,10 +154,10 @@
 }
 
 .dash-service-item.active .name { color: var(--primary-dark); font-weight: 800; }
-.dash-service-item .icon { font-size: 26px; }
+.dash-service-item .icon { font-size: 22px; }
 .dash-service-item .info { flex: 1; }
-.dash-service-item .name { font-weight: 700; font-size: 0.95rem; color: var(--text); }
-.dash-service-item .price { font-size: 0.85rem; color: var(--secondary); font-weight: 800; margin-top: 2px; }
+.dash-service-item .name { font-weight: 700; font-size: 0.85rem; color: var(--text); }
+.dash-service-item .price { font-size: 0.75rem; color: var(--secondary); font-weight: 800; margin-top: 2px; }
 
 /* iPhone & Mobile Optimization (Max 950px) */
 @media (max-width: 950px) {
