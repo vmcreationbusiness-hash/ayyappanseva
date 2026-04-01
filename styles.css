@@ -55,22 +55,34 @@
 }
 
 /* ── Unified Dashboard Layout ── */
+.dashboard-wrapper {
+  width: 100%;
+  height: calc(100vh - 70px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* No Global scroll */
+  background: transparent;
+}
+
 .dashboard-container {
   display: flex;
-  height: calc(100vh - 70px);
-  width: 100%;
-  gap: 15px;
-  padding: 15px;
+  width: 80%;
+  max-width: 1600px;
+  height: 80vh;
+  min-height: 550px;
+  gap: 20px;
+  padding: 0;
   overflow: hidden;
-  background: var(--bg);
   position: relative;
+  transition: var(--transition);
 }
 
 .dash-col {
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   overflow: hidden;
   position: relative;
   transition: var(--transition);
@@ -78,7 +90,7 @@
 
 /* Sidebar Columns (Web) */
 .services-sidebar { 
-  flex: 0 0 290px; 
+  flex: 0 0 280px; 
   background: var(--bg-card); 
   border: 1px solid var(--border); 
   backdrop-filter: blur(15px);
@@ -96,13 +108,19 @@
   -webkit-backdrop-filter: blur(20px);
 }
 .checkout-sidebar { 
-  flex: 0 0 380px; 
+  flex: 0 0 350px; 
   background: var(--bg-card); 
   border: 1px solid var(--border); 
   box-shadow: var(--shadow-sm); 
   border-radius: var(--radius); 
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
+}
+
+.cart-items-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 20px;
 }
 
 /* Service List Item (Desktop) */
@@ -135,14 +153,19 @@
 
 /* iPhone & Mobile Optimization (Max 950px) */
 @media (max-width: 950px) {
+  .dashboard-wrapper {
+     height: auto;
+     overflow-y: auto;
+  }
   .dashboard-container {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: calc(100svh - 65px);
     flex-direction: column;
-    height: calc(100dvh - 65px);
     padding: 0;
     gap: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-bottom: 85px; /* Space for sticky checkout */
+    overflow-y: visible;
   }
 
   .dash-col {

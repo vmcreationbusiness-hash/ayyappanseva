@@ -41,12 +41,10 @@ function initApp() {
   state.language = savedLang && TRANSLATIONS[savedLang] ? savedLang : 'en';
 
   loadConfigAndServices().then(() => {
-    // Set default service if none selected
-    if (!state.service && state.config.services.length > 0) {
-      state.service = state.config.services[0];
-    } else if (!state.service) {
-      state.service = { id: 'archana', name: t('archana'), price: 10, icon: '🪷' };
-    }
+    // Set default service: Archana
+    const archana = state.config.services.find(s => s.id === 'archana') || 
+                    { id: 'archana', name: t('archana'), price: 10, icon: '🪷' };
+    state.service = archana;
     renderNavbar();
     renderDashboard();
   });
@@ -273,7 +271,8 @@ function renderDashboard() {
   const total = state.cart.reduce((sum, item) => sum + item.price, 0);
 
   container.innerHTML = `
-    <div class="dashboard-container">
+    <div class="dashboard-wrapper">
+      <div class="dashboard-container">
       
       <!-- Col 1: Services -->
       <div class="dash-col services-sidebar">
@@ -374,6 +373,7 @@ function renderDashboard() {
             </div>
           `}
         </div>
+      </div>
       </div>
     </div>
   `;
