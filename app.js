@@ -383,6 +383,12 @@ function renderDashboard() {
 function selectService(serviceObj) {
   state.service = serviceObj;
   renderDashboard();
+  
+  // Mobile UX: Scroll to form when service selected
+  if (window.innerWidth <= 950) {
+    const container = document.querySelector('.dashboard-container');
+    if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════

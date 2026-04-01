@@ -59,10 +59,11 @@
   display: flex;
   height: calc(100vh - 70px);
   width: 100%;
-  gap: 12px;
-  padding: 12px;
+  gap: 15px;
+  padding: 15px;
   overflow: hidden;
   background: var(--bg);
+  position: relative;
 }
 
 .dash-col {
@@ -72,72 +73,110 @@
   border-radius: var(--radius-sm);
   overflow: hidden;
   position: relative;
-}
-
-/* Column 1: Services List */
-.services-sidebar {
-  flex: 0 0 280px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-
-/* Column 2: Entry Area */
-.entry-area {
-  flex: 1;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  padding: 20px;
-  overflow-y: auto;
-  box-shadow: var(--shadow-md);
-}
-
-/* Column 3: Checkout Sidebar */
-.checkout-sidebar {
-  flex: 0 0 350px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-
-/* Service List Item (Compact) */
-.dash-service-item {
-  padding: 15px;
-  border-bottom: 1px solid var(--border-light);
-  cursor: pointer;
   transition: var(--transition);
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
-.dash-service-item:hover {
-  background: var(--accent-soft);
-}
+/* Sidebar Columns (Web) */
+.services-sidebar { flex: 0 0 280px; background: var(--bg-card); border: 1px solid var(--border); }
+.entry-area { flex: 1; background: var(--bg-secondary); border: 1px solid var(--border); padding: 25px; overflow-y: auto; box-shadow: var(--shadow-md); border-radius: var(--radius); }
+.checkout-sidebar { flex: 0 0 360px; background: var(--bg-card); border: 1px solid var(--border); box-shadow: var(--shadow-sm); border-radius: var(--radius); }
 
-.dash-service-item.active {
-  background: var(--primary-glow);
-  border-left: 4px solid var(--primary);
-}
-
-.dash-service-item .icon { font-size: 24px; }
-.dash-service-item .info { flex: 1; }
-.dash-service-item .name { font-weight: 700; font-size: 0.9rem; }
-.dash-service-item .price { font-size: 0.8rem; color: var(--secondary); font-weight: 800; }
-
-@media (max-width: 1200px) {
-  .services-sidebar { flex: 0 0 80px; }
-  .services-sidebar .name, .services-sidebar .price { display: none; }
-  .services-sidebar .dash-service-item { justify-content: center; padding: 15px 0; }
-  .checkout-sidebar { flex: 0 0 300px; }
-}
-
+/* iPhone & Mobile Optimization (Max 950px) */
 @media (max-width: 950px) {
-  .dashboard-container { flex-direction: column; overflow-y: auto; height: auto; }
-  .dash-col { flex: 1 1 auto; height: auto; margin-bottom: 15px; min-height: 400px; }
-  .services-sidebar { order: 1; }
-  .entry-area { order: 2; }
-  .checkout-sidebar { order: 3; }
+  .dashboard-container {
+    flex-direction: column;
+    height: calc(100dvh - 65px);
+    padding: 0;
+    gap: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 85px; /* Space for sticky checkout */
+  }
+
+  .dash-col {
+    border-radius: 0;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* 1. Services as Horizontal Scroll (iPhone-style) */
+  .services-sidebar {
+    flex: 0 0 auto;
+    background: var(--bg-secondary);
+    border: none;
+    border-bottom: 1px solid var(--border-light);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .services-sidebar .cart-sidebar-title { display: none; }
+  .services-sidebar .cart-items-scroll {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    padding: 10px 15px !important;
+    gap: 12px !important;
+    scrollbar-width: none;
+  }
+  .services-sidebar .cart-items-scroll::-webkit-scrollbar { display: none; }
+
+  .dash-service-item {
+    flex: 0 0 auto;
+    padding: 8px 20px !important;
+    border: 1px solid var(--border-light);
+    border-radius: 50px;
+    background: var(--bg-card);
+    white-space: nowrap;
+    border-bottom: none !important;
+  }
+  .dash-service-item.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px var(--primary-glow);
+  }
+  .dash-service-item .name { font-size: 0.85rem !important; }
+  .dash-service-item .info .price { display: none; }
+
+  /* 2. Main Entry Area */
+  .entry-area {
+    padding: 20px 15px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .temple-header { margin-bottom: 15px !important; }
+  .temple-header h1 { font-size: 1.5rem !important; }
+
+  /* 3. Checkout Part (Floating on Mobile) */
+  .checkout-sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    z-index: 2000;
+    background: var(--bg-glass);
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
+    border-top: 1px solid var(--border);
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  .checkout-sidebar .cart-sidebar-title { padding: 12px 20px; font-size: 0.9rem; }
+  .checkout-sidebar .cart-items-scroll { display: none; } /* Hide list on mobile to save space */
+  .payment-wrapper { padding: 10px 20px 15px !important; border: none !important; }
+  .cart-sidebar-total { margin-bottom: 8px !important; }
+  .cart-sidebar-total span:first-child { font-size: 0.8rem; }
+  .cart-sidebar-total span:last-child { font-size: 1.1rem !important; }
+  
+  .btn-success {
+    border-radius: 18px !important;
+  }
 }
 
 /* ── Reset & Base ── */
