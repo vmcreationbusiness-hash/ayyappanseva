@@ -421,11 +421,19 @@ function renderPaymentSection(total) {
 }
 
 function addDevoteeToCart() {
-  const name= document.getElementById('devotee-name').value.trim();
-  const star= document.getElementById('devotee-star').value;
-  const starIdx = document.getElementById('devotee-star').selectedIndex;
+  const nameEl = document.getElementById('devotee-name');
+  const starEl = document.getElementById('devotee-star');
+  if (!nameEl || !starEl) return;
+
+  const name = nameEl.value.trim();
+  const star = starEl.value;
+  const starIdx = starEl.selectedIndex;
   const starEn = (starIdx > 0) ? NAKSHATRAS.en[starIdx - 1] : star;
 
+  if (!state.service) {
+    showToast('Select a service first', 'error');
+    return;
+  }
   if(!name || !star) {
     showToast('Name and Star required', 'error');
     return;
@@ -440,12 +448,18 @@ function addDevoteeToCart() {
     starEn: starEn,
     price: state.service.price
   });
-  renderEntryScreen();
+
+  // Reset fields
+  nameEl.value = '';
+  starEl.value = '';
+  
+  renderDashboard();
+  showToast(t('confirmAdd'));
 }
 
 function removeDevotee(id) {
   state.cart = state.cart.filter(c => c.id !== id);
-  renderEntryScreen();
+  renderDashboard();
 }
 
 async function generateInvoiceAndPrint() {
