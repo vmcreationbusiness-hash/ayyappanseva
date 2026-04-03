@@ -462,6 +462,7 @@ function addDevoteeToCart() {
     id: state.nextId++,
     service: state.service.id,
     serviceName: state.service.name,
+    serviceEn: enT(state.service.id) || state.service.name,
     serviceIcon: state.service.icon,
     name: name,
     star: star,
@@ -559,7 +560,7 @@ function showInvoiceModal(historicalOrder = null) {
   const rows = items.map((item, idx) => `
     <tr>
       <td style="padding:6px;">${idx + 1}</td>
-      <td style="padding:6px;">${item.serviceIcon} ${enT(item.service) || item.serviceName}</td>
+      <td style="padding:6px;">${item.serviceIcon} ${item.serviceEn || item.serviceName}</td>
       <td style="padding:6px;">${item.name}</td>
       <td style="padding:6px;">${item.starEn || getEnglishStarName(item.star)}</td>
       <td style="padding:6px; text-align:right">₹${item.price}</td>
@@ -697,7 +698,7 @@ async function renderOrdersScreen() {
     const orderRows = orders.map((order, idx) => {
       const itemsList = (order.items || []).map(item =>
         `<div style="font-size:0.85rem; color:var(--text-light); padding:2px 0;">
-          ${item.serviceIcon || '🕉️'} ${item.name} — ${item.starEn || getEnglishStarName(item.star)} (${enT(item.service) || item.serviceName})
+          ${item.serviceIcon || '🕉️'} ${item.name} — ${item.starEn || getEnglishStarName(item.star)} (${item.serviceEn || item.serviceName})
         </div>`
       ).join('');
 
