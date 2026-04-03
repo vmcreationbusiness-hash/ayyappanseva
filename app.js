@@ -775,7 +775,9 @@ async function renderOrdersScreen() {
       </div>
     </div>
     <div class="screen-main">
-      <div class="section-title">${t('orderHistory')}</div>
+      <div style="text-align:center; padding: 15px 0 10px 0;">
+        <h1 style="color:var(--primary-dark); font-size:1.3rem; margin:0; letter-spacing:0.5px;">${t('orderHistory')}</h1>
+      </div>
       <div class="cart-container" style="max-width:1000px;">
         <div class="cart-card">
           ${ordersContent}
