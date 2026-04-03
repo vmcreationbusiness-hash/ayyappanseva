@@ -208,7 +208,7 @@ const FormData = require('form-data');
 const upload = multer();
 
 // ── Proxy for Sarvam AI (STT) ──
-app.post(['/api/proxy/sarvam-stt', '/proxy/sarvam-stt'], upload.single('file'), async (req, res) => {
+app.post(['/api/proxy/sarvam-stt', '/proxy/sarvam-stt', '/api/proxy/sarvam-stt-v1'], upload.single('file'), async (req, res) => {
   try {
     const { model, language_code, apiKey } = req.body;
     if (!req.file) return res.status(400).json({ error: 'No audio file provided' });
