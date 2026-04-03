@@ -67,9 +67,9 @@
 
 .dashboard-container {
   display: flex;
-  width: 76%;  /* Increased width for slightly larger center screen as requested */
-  max-width: 1550px;
-  height: 85vh; /* Increased from 82vh to 85vh */
+  width: 85%;  /* Expanded to 85% of the entire screen as requested */
+  max-width: 1700px; /* Increased max-width for better use of large screens */
+  height: 85vh;
   min-height: 550px;
   gap: 15px;
   padding: 0;
