@@ -526,12 +526,14 @@ async function generateInvoiceAndPrint() {
     };
     
     await saveOrder(orderData);
-    showInvoiceModal();
+    showInvoiceModal(orderData);
+    state.cart = []; // Clear only after modal is primed
+    renderCartScreen();
     showToast('Payment Successful! Receipt Generated ✅');
   } catch (e) {
     console.error('Invoice Error:', e);
     showToast('Connection issue, but order is saved locally.', 'error');
-    showInvoiceModal();
+    showInvoiceModal(orderData);
   }
 }
 
