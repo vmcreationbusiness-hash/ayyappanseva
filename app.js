@@ -24,6 +24,20 @@ const state = {
   recentOrders: []
 };
 
+const SARVAM_LANG_CODES = {
+  'en': 'en-IN',
+  'hi': 'hi-IN',
+  'ta': 'ta-IN',
+  'te': 'te-IN',
+  'kn': 'kn-IN',
+  'ml': 'ml-IN',
+  'gu': 'gu-IN',
+  'mr': 'mr-IN',
+  'pa': 'pa-IN',
+  'bn': 'bn-IN',
+  'or': 'or-IN'
+};
+
 // ── Constants ──
 const PRICE_PER_ITEM = 10;
 const UPI_ID = "temple@upi"; // Replace with actual UPI ID
@@ -787,16 +801,7 @@ let REVERIE_API_KEY = '';
 let REVERIE_APP_ID = '';
 let mediaRecorder = null;
 
-// Sarvam.ai language codes (BCP-47)
-const SARVAM_LANG_CODES = {
-  en: 'en-IN',
-  ta: 'ta-IN',
-  te: 'te-IN',
-  ml: 'ml-IN',
-  kn: 'kn-IN'
-};
-
-// Sarvam TTS speaker voices - 'meera' is the high-quality multilingual female voice
+// Sarvam.ai language codes and voices are now defined at top of file.
 const SARVAM_VOICES = {
   en: 'arya',
   ta: 'arya',
@@ -1357,7 +1362,7 @@ async function startSarvamSTT(field) {
       try {
         const formData = new FormData();
         formData.append('file', audioBlob, `audio.${extension}`);
-        formData.append('model', 'saaras:v3');
+        formData.append('model', 'saaras:v1');
         formData.append('language_code', langCode);
         formData.append('apiKey', SARVAM_API_KEY);
 
