@@ -1092,7 +1092,8 @@ async function speakWithGoogle(text) {
 
 async function startVoiceOrderFlow() {
   if (!SpeechRecognition && !SARVAM_API_KEY) {
-    showToast(t('noVoiceSupport'), 'error');
+    showToast('Voice Recognition requires a Sarvam API Key. Please update Settings.', 'error');
+    toggleSettings(); // Open settings for them
     return;
   }
 
@@ -1220,7 +1221,8 @@ async function startVoiceInput(field) {
   }
 
   if (!SpeechRecognition && !SARVAM_API_KEY) {
-    showToast(t('noVoiceSupport'), 'error');
+    showToast('Voice Recognition requires a Sarvam API Key. Please update Settings.', 'error');
+    toggleSettings();
     return;
   }
 
@@ -2527,10 +2529,11 @@ function saveUpiConfig(field, value) {
 }
 
 function saveVoiceKey(type, value) {
+  const trimmed = value.trim();
   if (type === 'sarvam') {
-    SARVAM_API_KEY = value.trim();
-    state.config.sarvamKey = SARVAM_API_KEY;
-    localStorage.setItem('ayyappa_sarvam_api_key', SARVAM_API_KEY);
+    SARVAM_API_KEY = trimmed;
+    state.config.sarvamKey = trimmed;
+    localStorage.setItem('ayyappa_sarvam_api_key', trimmed);
   } else if (type === 'google') {
     GOOGLE_API_KEY = value.trim();
     state.config.googleKey = GOOGLE_API_KEY;
