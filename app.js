@@ -43,6 +43,10 @@ const PRICE_PER_ITEM = 10;
 const UPI_ID = "temple@upi"; // Replace with actual UPI ID
 const MERCHANT_NAME = "Swami Ayyappa Temple";
 
+// ── API Configuration ──
+const ORDERS_API_URL = '/api/orders';
+const SETTINGS_API_URL = '/api/settings/dashboard';
+
 // ── DOM Ready ──
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
@@ -2675,8 +2679,7 @@ function renderSettingsOfferings() {
   `;
 }
 
-// ── Settings API URL (must be defined before use) ──
-const SETTINGS_API_URL = '/api/settings/app-settings';
+// Settings API is defined at top of file.
 
 async function loadConfigAndServices() {
   try {
@@ -2984,7 +2987,46 @@ function darkenColor(hex, percent) {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
-// ── Load settings on page load ──
+// ── Initial Load ──
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(loadSettings, 100);
+    setTimeout(loadSettings, 100);
 });
+
+// ── MongoDB Order Communication ──
+
+/**
+ * Saves a new order to the database.
+ */
+async function saveOrder(orderData) {
+  if (!orderData) return;
+  try {
+    const response = await fetch(ORDERS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to save order');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('❌ MongoDB saveOrder failed:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Retrieves the latest orders from the database.
+ */
+async function getOrders(limit = 100) {
+  try {
+    const response = await fetch(`${ORDERS_API_URL}?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch orders');
+    return await response.json();
+  } catch (error) {
+    console.error('❌ MongoDB getOrders failed:', error.message);
+    // Return empty array instead of crashing so UI stays responsive
+    return [];
+  }
+}
