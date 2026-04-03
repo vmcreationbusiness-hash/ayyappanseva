@@ -3004,7 +3004,7 @@ function darkenColor(hex, percent) {
 
 // ── Initial Load ──
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(loadSettings, 100);
+  initApp();
 });
 
 // ── MongoDB Order Communication ──
