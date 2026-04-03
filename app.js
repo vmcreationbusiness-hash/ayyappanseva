@@ -1974,14 +1974,15 @@ function listenForSpeechSarvam() {
         }
       };
 
-      mediaRecorder.start(1000); // 1s timeslices to ensure chunks are populated
-      console.log('🎤 Sarvam recorder started... timesliced.');
+      mediaRecorder.start(); 
+      console.log('🎤 High-fidelity capture started (15s limit)');
       setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
           stream.getTracks().forEach(t => t.stop());
+          console.log('⏱ Recording auto-cycle finished.');
         }
-      }, 10000);
+      }, 15000);
     } catch { resolve(null); }
   });
 }
