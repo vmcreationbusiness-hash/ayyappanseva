@@ -69,8 +69,8 @@
   display: flex;
   width: 76%;  /* Increased width for slightly larger center screen as requested */
   max-width: 1550px;
-  height: 82vh;
-  min-height: 520px;
+  height: 85vh; /* Increased from 82vh to 85vh */
+  min-height: 550px;
   gap: 15px;
   padding: 0;
   overflow: hidden;
@@ -140,8 +140,8 @@
 .cart-items-scroll {
   flex: 1;
   overflow-y: auto;
-  max-height: 50vh; /* Dynamic cart length based on screen height */
-  padding-bottom: 10px;
+  max-height: 70vh; /* Increased from 50vh to 70vh for significantly longer cart view */
+  padding-bottom: 20px;
   scrollbar-width: thin;
 }
 
