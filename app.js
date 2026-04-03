@@ -94,7 +94,7 @@ function renderNavbar() {
 
   // Always add Voice and Settings buttons
   actionsHtml += `
-    <button class="btn-menu voice-btn-global" onclick="startVoiceRecording()" title="Voice Command">
+    <button class="btn-menu voice-btn-global" onclick="startVoiceInput('name')" title="Voice Command">
       🎤
     </button>
     <button class="btn-menu settings-btn" onclick="toggleSettings()" title="Settings">
@@ -1214,6 +1214,12 @@ function speakWithBrowser(text) {
 }
 
 async function startVoiceInput(field) {
+  // Global UX Fix: Always ensure we are on the dashboard before starting voice
+  const activeScreen = document.querySelector('.screen.active');
+  if (!activeScreen || activeScreen.id !== 'screen-dashboard') {
+    if (typeof renderDashboard === 'function') renderDashboard();
+  }
+
   if (!SpeechRecognition && !SARVAM_API_KEY) {
     showToast(t('noVoiceSupport'), 'error');
     return;
