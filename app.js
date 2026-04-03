@@ -1607,29 +1607,30 @@ function getSupportedMimeType() {
 }
 
 function processVoiceResult(field, transcript) {
-  const overlay = document.getElementById('voice-overlay');
+  if (!transcript || transcript.trim() === '') return;
+  const cleanTranscript = transcript.trim();
   const statusEl = document.getElementById('voice-status');
 
   if (field === 'name') {
     const nameInput = document.getElementById('devotee-name');
     if (nameInput) {
-      nameInput.value = transcript;
+      nameInput.value = cleanTranscript;
+      statusEl.textContent = `✅ Name: ${cleanTranscript}`;
+      speak(`${t('voiceConfirmName')} ${cleanTranscript}`);
     }
-    statusEl.textContent = `${t('voiceConfirmName')}: ${transcript}`;
-    speak(`${t('voiceConfirmName')} ${transcript}`);
     setTimeout(() => closeVoiceOverlay(), 2000);
   } else if (field === 'star') {
-    const matchedIndex = findNakshatraIndexUniversal(transcript);
+    const matchedIndex = findNakshatraIndexUniversal(cleanTranscript);
     const starSelect = document.getElementById('devotee-star');
 
     if (matchedIndex >= 0 && starSelect) {
       const nakshatrasInCurrentLang = getNakshatras();
       const starName = nakshatrasInCurrentLang[matchedIndex];
-      starSelect.value = starName; // Now matches <option value="Name">
-      statusEl.textContent = `${t('voiceConfirmStar')}: ${starName}`;
+      starSelect.value = starName; 
+      statusEl.textContent = `✅ Star: ${starName}`;
       speak(`${t('voiceConfirmStar')} ${starName}`);
     } else {
-      statusEl.textContent = transcript;
+      statusEl.textContent = `Heard: ${cleanTranscript}`;
     }
     setTimeout(() => closeVoiceOverlay(), 2000);
   }
