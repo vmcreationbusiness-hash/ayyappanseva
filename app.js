@@ -92,8 +92,11 @@ function renderNavbar() {
     `;
   }
 
-  // Always add Settings button
+  // Always add Voice and Settings buttons
   actionsHtml += `
+    <button class="btn-menu voice-btn-global" onclick="startVoiceRecording()" title="Voice Command">
+      🎤
+    </button>
     <button class="btn-menu settings-btn" onclick="toggleSettings()" title="Settings">
       ⚙️
     </button>

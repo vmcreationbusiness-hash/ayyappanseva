@@ -2082,6 +2082,46 @@ body.bot-speaking .voice-status {
   color: var(--primary-dark);
 }
 
+/* Global Navbar Actions */
+.btn-menu {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 1, 1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.btn-menu:hover {
+  transform: translateY(-2px);
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.voice-btn-global {
+  background: var(--primary-light) !important;
+  color: var(--primary-dark) !important;
+  font-size: 1.2rem !important;
+  border: 1.5px solid var(--primary) !important;
+}
+
+.voice-btn-global:active { transform: scale(0.9); }
+
+.settings-btn {
+  opacity: 0.8;
+}
+
+.settings-btn:hover {
+  opacity: 1;
+}
+
 .cart-count {
   background: var(--secondary);
   color: white;
