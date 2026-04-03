@@ -1097,10 +1097,9 @@ async function startVoiceOrderFlow() {
   }
 
   // Ensure we are on offering screen
-  const entryScreen = document.getElementById('screen-entry');
-  if (!entryScreen || !entryScreen.classList.contains('active')) {
-    showToast('Voice order is only available on the Offering screen', 'warning');
-    return;
+  const dashboard = document.getElementById('screen-dashboard');
+  if (!dashboard || !dashboard.classList.contains('active')) {
+    if (typeof showScreen === 'function') showScreen('screen-dashboard');
   }
 
   // Pre-request microphone immediately on user interaction to avoid browser block
