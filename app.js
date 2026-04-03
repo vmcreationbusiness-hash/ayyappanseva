@@ -404,18 +404,18 @@ function renderPaymentSection(total) {
   const upiId = state.config.upiId || 'temple@upi';
   const merch = state.config.merchantName || 'Swami Ayyappa Temple';
   const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merch)}&am=${total}&cu=INR&tn=${encodeURIComponent('Offering')}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(upiLink)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${encodeURIComponent(upiLink)}`;
 
   return `
-    <div class="form-card" style="text-align:center; height:auto; display:flex; flex-direction:column; justify-content:center; padding:8px; margin-top:5px; max-width:280px; margin-left:auto; margin-right:auto; box-shadow:none; border:1px dashed var(--border);">
+    <div class="form-card" style="text-align:center; height:auto; display:flex; flex-direction:column; justify-content:center; padding:4px; margin-top:2px; max-width:260px; margin-left:auto; margin-right:auto; box-shadow:none; border:none;">
        <div>
-         <h4 style="margin-bottom:5px; color:var(--primary-dark); font-size:0.75rem;">Secure UPI Payment</h4>
-         <div class="upi-qr" style="max-width:85px; margin:0 auto; border:1px solid var(--border-light); padding:4px; background:white;">
+         <h4 style="margin-bottom:3px; color:var(--primary-dark); font-size:0.65rem; opacity:0.8;">Secure UPI Payment</h4>
+         <div class="upi-qr" style="max-width:50px; margin:0 auto; border:1px solid var(--border-light); padding:2px; background:white; border-radius:4px;">
             <img src="${qrUrl}" alt="QR" style="width:100%; height:100%; display:block;">
          </div>
-         <div style="margin-top:4px; font-size:0.7rem; font-weight:600; color:var(--text-muted); opacity:0.8;">${upiId}</div>
+         <div style="margin-top:2px; font-size:0.6rem; font-weight:600; color:var(--text-muted); opacity:0.6;">${upiId}</div>
        </div>
-       <button class="btn btn-success btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:8px; padding:10px; font-size:0.9rem; border-radius:12px;">
+       <button class="btn btn-success btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:5px; padding:8px; font-size:0.85rem; border-radius:10px;">
          💳 Pay & Print Invoice
        </button>
     </div>
