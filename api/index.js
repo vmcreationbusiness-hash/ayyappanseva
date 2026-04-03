@@ -208,7 +208,7 @@ const FormData = require('form-data');
 const upload = multer();
 
 // ── Proxy for Sarvam AI (STT) ──
-app.post('/api/proxy/sarvam-stt', upload.single('file'), async (req, res) => {
+app.post(['/api/proxy/sarvam-stt', '/proxy/sarvam-stt'], upload.single('file'), async (req, res) => {
   try {
     const { model, language_code, apiKey } = req.body;
     if (!req.file) return res.status(400).json({ error: 'No audio file provided' });
@@ -218,7 +218,7 @@ app.post('/api/proxy/sarvam-stt', upload.single('file'), async (req, res) => {
       filename: req.file.originalname,
       contentType: req.file.mimetype
     });
-    form.append('model', model || 'saaras:v3');
+    form.append('model', model || 'saaras:v1');
     form.append('language_code', language_code || 'en-IN');
 
     const response = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
