@@ -297,7 +297,7 @@ function renderDashboard() {
         <div class="cart-items-scroll" style="padding:0;">
           ${services.map(s => `
             <div class="dash-service-item ${state.service && state.service.id === s.id ? 'active' : ''}" 
-                 onclick="selectService(${JSON.stringify(s).replace(/"/g, '&quot;')})">
+                 onclick="selectServiceById('${s.id}')">
               <div class="icon">${s.icon}</div>
               <div class="info">
                 <div class="name">${t(s.id) || s.name}</div>
@@ -398,6 +398,16 @@ function renderDashboard() {
     </div>
   `;
   showScreen('screen-dashboard');
+}
+
+function selectServiceById(id) {
+  const services = state.config.services.length > 0 ? state.config.services : [
+    { id: 'archana', name: t('archana'), price: 10, icon: '🪷', details: t('archanaDesc') },
+    { id: 'gheeVizhaku', name: t('gheeVizhaku'), price: 50, icon: '🪔', details: t('gheeVizhakuDesc') },
+    { id: 'coconutVizhaku', name: t('coconutVizhaku'), price: 30, icon: '🥥', details: t('coconutVizhakuDesc') }
+  ];
+  const service = services.find(s => s.id === id);
+  if (service) selectService(service);
 }
 
 function selectService(serviceObj) {
