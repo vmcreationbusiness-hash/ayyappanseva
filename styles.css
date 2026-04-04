@@ -3721,13 +3721,39 @@ body.bot-speaking .voice-status {
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
-/* Print Settings Hide */
+/* ── Refined Print Settings ── */
 @media print {
-  .settings-toggle,
-  .settings-panel,
-  .settings-panel-overlay,
-  .nav-bar,
-  .btn-voice {
-    display: none !important;
+  /* Hide everything by default */
+  body * { visibility: hidden !important; }
+  
+  /* Only show the invoice modal content */
+  #invoice-modal-overlay, #invoice-modal-overlay * { 
+    visibility: visible !important; 
+  }
+  
+  /* Position modal at top left of page */
+  #invoice-modal-overlay { 
+    position: absolute !important; 
+    left: 0 !important; 
+    top: 0 !important; 
+    width: 100% !important; 
+    background: white !important; 
+    display: flex !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Hide UI elements inside modal during print */
+  .no-print { display: none !important; }
+  
+  /* Ensure card looks good on flat paper */
+  .invoice-card { 
+    border: none !important; 
+    box-shadow: none !important; 
+    width: 100% !important; 
+    max-width: 100% !important;
+    margin: 0 !important; 
+    padding: 0 !important; 
   }
 }

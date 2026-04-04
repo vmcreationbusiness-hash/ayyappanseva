@@ -639,7 +639,7 @@ function showInvoiceModal(historicalOrder = null) {
       </div>
 
       <div class="btn-group no-print" style="margin-top:15px; display:flex; gap:10px; width:100%;">
-        <button class="btn btn-primary" onclick="printInvoice()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
+        <button class="btn btn-primary" onclick="window.print()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
           🖨️ Print Receipt
         </button>
         <button class="btn btn-secondary" onclick="closeInvoiceModal()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
