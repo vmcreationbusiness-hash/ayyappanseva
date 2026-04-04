@@ -1389,8 +1389,13 @@ async function startSarvamSTT(field) {
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
-          console.warn('Sarvam STT error:', errData);
-          throw new Error(errData.error || `HTTP ${response.status}`);
+          const msg = errData.error || `HTTP ${response.status}`;
+          statusEl.textContent = `❌ ${msg}`;
+          setTimeout(() => {
+            isListening = false;
+            startWebSpeechAPI(field);
+          }, 2000);
+          return;
         }
 
         const data = await response.json();
@@ -1399,14 +1404,18 @@ async function startSarvamSTT(field) {
           processVoiceResult(field, data.transcript.trim());
           console.log('🎯 Sarvam STT result:', data.transcript);
         } else {
-          console.warn('Sarvam STT: no transcript, falling back');
-          isListening = false;
-          startWebSpeechAPI(field);
+          statusEl.textContent = '❌ No speech detected';
+          setTimeout(() => {
+             isListening = false;
+             startWebSpeechAPI(field);
+          }, 1500);
         }
       } catch (err) {
-        console.error('Sarvam STT failed:', err.message, '- falling back to Web Speech');
-        isListening = false;
-        startWebSpeechAPI(field);
+        statusEl.textContent = `❌ API Error: ${err.message}`;
+        setTimeout(() => {
+          isListening = false;
+          startWebSpeechAPI(field);
+        }, 2000);
       }
     };
 
