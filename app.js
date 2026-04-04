@@ -230,8 +230,19 @@ function generateInvoiceNo() {
 
 function formatDate() {
   const now = new Date();
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return now.toLocaleDateString('en-IN', options);
+  const day = now.getDate();
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const month = monthNames[now.getMonth()];
+  const year = now.getFullYear();
+  
+  let hours = now.getHours();
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  const timeStr = hours.toString().padStart(2, '0') + ':' + minutes + ' ' + ampm;
+  
+  return `${day} ${month} ${year} at ${timeStr}`;
 }
 
 // ── Screen Navigation ──
