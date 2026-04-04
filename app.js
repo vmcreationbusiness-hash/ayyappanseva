@@ -609,51 +609,66 @@ function showInvoiceModal(historicalOrder = null) {
   if (!modalOverlay || !modalContent) return;
 
   modalContent.innerHTML = `
-    <div class="invoice-container" style="max-width:100%; padding:0;">
-      <div class="invoice-card" id="invoice-content" style="box-shadow:none; border:none; padding:10px;">
-        <div class="invoice-header" style="margin-bottom:10px;">
-          <div style="font-size: 32px; margin-bottom: 4px;">🙏</div>
-          <h2 style="font-size:1.05rem;">${enT('invoiceTitle')}</h2>
-          <div class="invoice-subtitle" style="font-size:0.75rem;">Sabarimala Sannidhanam Online</div>
+    <div class="invoice-container" style="max-width:100%; padding:0; background:white;">
+      <div class="invoice-card" id="invoice-content" style="box-shadow:none; border:none; padding:20px; background:white;">
+        
+        <!-- Header -->
+        <div class="invoice-header" style="text-align:center; margin-bottom:15px;">
+          <div style="font-size: 40px; margin-bottom: 5px;">🙏</div>
+          <h2 style="margin:0; font-family:'Cinzel', serif; color:#B8860B; font-size:1.3rem; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Swami Ayyappa Temple - Offering Invoice</h2>
+          <div style="font-size:0.85rem; color:#666; margin-top:4px;">Sabarimala Sannidhanam Online</div>
         </div>
 
-        <div class="invoice-meta" style="margin-bottom:15px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:5px 0;">
-          <div style="padding:5px 0; border-bottom:1px dashed var(--border);">
-            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Invoice No</div>
-            <div style="font-size:1.1rem; font-weight:800; color:var(--primary);">${invoiceNo}</div>
+        <div style="height:2px; background:#B8860B; width:100%; margin-bottom:15px;"></div>
+
+        <!-- Meta Card -->
+        <div style="background:#FFF9F0; border:1px solid #F0E6D2; border-radius:15px; padding:15px; display:flex; justify-content:space-between; margin-bottom:20px;">
+          <div style="text-align:left;">
+            <div style="font-size:0.75rem; color:#888; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Invoice No</div>
+            <div style="font-size:1.4rem; font-weight:900; color:#B8860B; font-family:'Outfit', sans-serif;">${invoiceNo}</div>
           </div>
-          <div style="padding:5px 0;">
-            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Date</div>
-            <div style="font-size:1rem; font-weight:600;">${date}</div>
+          <div style="text-align:right;">
+            <div style="font-size:0.75rem; color:#888; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Date</div>
+            <div style="font-size:1.1rem; font-weight:700; color:#333;">${date}</div>
           </div>
         </div>
 
-        <table class="invoice-table" style="width:100%; border-collapse:collapse; margin-bottom:10px; font-size:0.85rem;">
+        <!-- Table -->
+        <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
           <thead>
-            <tr style="border-bottom:1px solid var(--border);">
-              <th style="padding:6px; text-align:left;">${enT('slNo')}</th>
-              <th style="padding:6px; text-align:left;">${enT('service')}</th>
-              <th style="padding:6px; text-align:left;">${enT('name')}</th>
-              <th style="padding:6px; text-align:left;">${enT('star')}</th>
-              <th style="padding:6px; text-align:right;">${enT('price')}</th>
+            <tr style="background:#FFF9F0; border-bottom:1px solid #EEE;">
+              <th style="padding:10px 8px; text-align:left; font-size:0.75rem; color:#666; text-transform:uppercase; font-weight:700;">SL.NO</th>
+              <th style="padding:10px 8px; text-align:left; font-size:0.75rem; color:#666; text-transform:uppercase; font-weight:700;">SERVICE</th>
+              <th style="padding:10px 8px; text-align:left; font-size:0.75rem; color:#666; text-transform:uppercase; font-weight:700;">NAME</th>
+              <th style="padding:10px 8px; text-align:left; font-size:0.75rem; color:#666; text-transform:uppercase; font-weight:700;">STAR</th>
+              <th style="padding:10px 8px; text-align:right; font-size:0.75rem; color:#666; text-transform:uppercase; font-weight:700;">PRICE</th>
             </tr>
           </thead>
-          <tbody>
-            ${rows}
+          <tbody style="font-family:'Outfit', sans-serif;">
+            ${items.map((item, idx) => `
+              <tr style="border-bottom:1px solid #F5F5F5;">
+                <td style="padding:12px 8px; font-size:0.95rem;">${idx + 1}</td>
+                <td style="padding:12px 8px; font-size:0.95rem;">${item.serviceIcon} ${item.serviceEn || item.serviceName}</td>
+                <td style="padding:12px 8px; font-size:0.95rem;">${item.name}</td>
+                <td style="padding:12px 8px; font-size:0.95rem;">${item.starEn || getEnglishStarName(item.star)}</td>
+                <td style="padding:12px 8px; text-align:right; font-size:0.95rem; font-weight:600;">₹${item.price}</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
 
-        <div class="invoice-total" style="padding:10px 0; border-top:1px solid var(--primary); text-align:right;">
-          <div class="total-text" style="font-size:0.9rem; color:var(--text-muted);">${enT('grandTotal')} (Paid)</div>
-          <div class="total-amount" style="font-size:1.6rem; font-weight:800; color:var(--secondary);">₹${total}</div>
+        <!-- Total Footer -->
+        <div style="text-align:right; margin-top:10px;">
+          <div style="font-size:0.85rem; color:#888; font-weight:800; text-transform:uppercase; font-style:italic;">Grand Total (Paid)</div>
+          <div style="font-size:2.4rem; font-weight:900; color:#800020; margin-top:5px; font-family:'Outfit', sans-serif;">₹${total}</div>
         </div>
       </div>
 
-      <div class="btn-group no-print" style="margin-top:15px; display:flex; gap:10px; width:100%;">
-        <button class="btn btn-primary" onclick="window.print()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
+      <div class="btn-group no-print" style="margin:20px; display:flex; gap:10px;">
+        <button class="btn btn-primary" onclick="window.print()" style="flex:1; padding:15px; font-weight:700; font-size:1rem; border-radius:50px; background:#B8860B; color:white; border:none; cursor:pointer;">
           🖨️ Print Receipt
         </button>
-        <button class="btn btn-secondary" onclick="closeInvoiceModal()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
+        <button class="btn btn-secondary" onclick="closeInvoiceModal()" style="flex:1; padding:15px; font-weight:700; font-size:1rem; border-radius:50px; background:#f0f0f0; border:none; cursor:pointer;">
           🏠 Back to Home
         </button>
       </div>
