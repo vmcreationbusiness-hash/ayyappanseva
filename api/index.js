@@ -12,13 +12,14 @@ async function connectDB() {
   try {
     console.log('⏳ Connecting to MongoDB...');
     await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 5000, // wait 5 seconds max for Atlas
+      serverSelectionTimeoutMS: 5000, 
       socketTimeoutMS: 45000,
+      maxPoolSize: 5, // perfect for 500 tx/day free tier
+      connectTimeoutMS: 10000,
     });
-    console.log('✅ Connected to MongoDB Atlas');
+    console.log('✅ Connected to MongoDB Atlas - Free Tier Optimized');
   } catch (error) {
     console.error('❌ MongoDB Connection Error:', error.message);
-    // Don't throw here, allow the individual routes to handle the state
   }
 }
 
