@@ -620,14 +620,14 @@ function showInvoiceModal(historicalOrder = null) {
           <div class="temple-sub" style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">Sabarimala Sannidhanam Online</div>
         </div>
 
-        <div class="invoice-meta" style="margin-bottom:12px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:4px 0;">
-          <div style="padding:4px 0; border-bottom:1px dashed var(--border); text-align:left;">
-            <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Invoice No</div>
-            <div style="font-size:0.95rem; font-weight:800; color:var(--primary);">${invoiceNo}</div>
+        <div class="invoice-meta" style="margin-bottom:12px; padding:12px; background:rgba(184, 134, 11, 0.04); border-radius:15px; border:1px solid rgba(184, 134, 11, 0.15);">
+          <div style="margin-bottom:10px; border-bottom:1px dashed rgba(184, 134, 11, 0.2); padding-bottom:6px; text-align:left;">
+            <div style="font-size:0.6rem; text-transform:uppercase; font-weight:800; color:var(--text-muted); opacity:0.8; margin-bottom:2px;">Invoice No</div>
+            <div style="font-size:0.95rem; font-weight:900; color:var(--secondary); letter-spacing:0.5px;">${invoiceNo}</div>
           </div>
-          <div style="padding:4px 0; text-align:left;">
-            <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Date</div>
-            <div style="font-size:0.85rem; font-weight:600;">${date}</div>
+          <div style="text-align:left;">
+            <div style="font-size:0.6rem; text-transform:uppercase; font-weight:800; color:var(--text-muted); opacity:0.8; margin-bottom:2px;">Date</div>
+            <div style="font-size:0.85rem; font-weight:700; color:var(--text);">${date}</div>
           </div>
         </div>
 
