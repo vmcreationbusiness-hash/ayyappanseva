@@ -554,7 +554,7 @@ async function generateInvoiceAndPrint() {
     showToast('Payment Successful! Receipt Generated ✅');
   } catch (e) {
     console.error('Invoice Error:', e);
-    showToast('Connection issue, but order is saved locally.', 'error');
+    showToast(`Cloud Sync Error: ${e.message || 'Database connection problem'}. Printing receipt locally...`, 'error');
     if (orderData) {
        showInvoiceModal(orderData);
     } else {
@@ -3036,22 +3036,29 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Saves a new order to the database.
  */
-async function saveOrder(orderData) {
+async function saveOrder(orderData, retries = 2) {
   if (!orderData) return;
-  try {
-    const response = await fetch(ORDERS_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderData)
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'Failed to save order');
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const response = await fetch(ORDERS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn(`⚠️ Move MongoDB save attempt ${i+1} failed:`, error.message);
+      if (i === retries) {
+        console.error('❌ MongoDB saveOrder final failure:', error.message);
+        throw error;
+      }
+      // Wait 1 second before retrying
+      await new Promise(res => setTimeout(res, 1000));
     }
-    return await response.json();
-  } catch (error) {
-    console.error('❌ MongoDB saveOrder failed:', error.message);
-    throw error;
   }
 }
 
