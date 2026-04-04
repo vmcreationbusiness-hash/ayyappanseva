@@ -443,16 +443,19 @@ function renderPaymentSection(total) {
   const upiId = state.config.upiId || 'temple@upi';
   const merch = state.config.merchantName || 'Swami Ayyappa Temple';
   const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merch)}&am=${total}&cu=INR&tn=${encodeURIComponent('Offering')}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${encodeURIComponent(upiLink)}`;
+  
+  // Use uploaded QR if exists, otherwise fallback to generated one
+  const customQr = localStorage.getItem('ayyappa_upi_qr');
+  const qrUrl = customQr || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiLink)}`;
 
   return `
     <div class="form-card" style="text-align:center; height:auto; display:flex; flex-direction:column; justify-content:center; padding:4px; margin-top:2px; max-width:260px; margin-left:auto; margin-right:auto; box-shadow:none; border:none;">
-       <div>
-         <h4 style="margin-bottom:3px; color:var(--primary-dark); font-size:0.65rem; opacity:0.8;">Secure UPI Payment</h4>
-         <div class="upi-qr" style="max-width:50px; margin:0 auto; border:1px solid var(--border-light); padding:2px; background:white; border-radius:4px;">
-            <img src="${qrUrl}" alt="QR" style="width:100%; height:100%; display:block;">
+       <div style="background: var(--bg-secondary); padding: 8px; border-radius: 12px; border: 1px solid var(--border-light);">
+         <h4 style="margin-bottom:5px; color:var(--primary-dark); font-size:0.75rem; font-weight:800;">Scan to Pay</h4>
+         <div class="upi-qr" style="max-width:120px; margin:0 auto; border:2px solid white; padding:5px; background:white; border-radius:8px; box-shadow: var(--shadow-sm);">
+            <img src="${qrUrl}" alt="QR" style="width:100%; height:auto; display:block;">
          </div>
-         <div style="margin-top:2px; font-size:0.6rem; font-weight:600; color:var(--text-muted); opacity:0.6;">${upiId}</div>
+         <div style="margin-top:5px; font-size:0.7rem; font-weight:700; color:var(--text);">${upiId}</div>
        </div>
        <button class="btn btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:8px; padding:12px; font-size:0.9rem; border-radius:12px; background:black !important; color:white !important; border:none; font-weight:800; cursor:pointer;">
          💳 Pay and Print Invoice
@@ -2431,6 +2434,40 @@ async function handleBgImageUpload(event) {
   saveSettings();
 }
 
+// ── UPI QR Upload ──
+async function handleUpiQrUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  showToast('📷 Processing QR Image...');
+  
+  const dataUrl = await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+
+  // Compress QR (usually small) 
+  const compressedUrl = await compressImage(dataUrl, 500, 0.8);
+  
+  try {
+    localStorage.setItem('ayyappa_upi_qr', compressedUrl);
+    
+    // Update preview instantly
+    const preview = document.getElementById('upi-qr-preview');
+    const container = document.getElementById('upi-qr-preview-container');
+    if (preview && container) {
+      preview.src = compressedUrl;
+      container.style.display = 'block';
+    }
+    
+    showToast('UPI QR Saved ✅');
+    renderDashboard(); // Update current payment view if open
+  } catch (e) {
+    showToast('QR Image too large', 'error');
+  }
+}
+
 // ── Compress image to fit MongoDB document size limit ──
 function compressImage(dataUrl, maxSize = 800, quality = 0.7) {
   return new Promise((resolve) => {
@@ -2960,6 +2997,14 @@ function loadSettings() {
     SARVAM_API_KEY = savedApiKey;
     const keyInput = document.getElementById('sarvam-api-key-input');
     if (keyInput) keyInput.value = savedApiKey;
+  }
+
+  // QR Code Preview
+  const savedQr = localStorage.getItem('ayyappa_upi_qr');
+  if (savedQr) {
+    const p = document.getElementById('upi-qr-preview');
+    const c = document.getElementById('upi-qr-preview-container');
+    if (p && c) { p.src = savedQr; c.style.display = 'block'; }
   }
 
   // ── Step 2: Fetch from MongoDB in background and sync ──
