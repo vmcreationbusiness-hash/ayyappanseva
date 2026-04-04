@@ -594,12 +594,12 @@ function showInvoiceModal(historicalOrder = null) {
   const invoiceNo = historicalOrder ? historicalOrder.invoiceNo : state.invoiceNo;
 
   const rows = items.map((item, idx) => `
-    <tr>
-      <td style="padding:6px;">${idx + 1}</td>
-      <td style="padding:6px;">${item.serviceIcon} ${item.serviceEn || item.serviceName}</td>
-      <td style="padding:6px;">${item.name}</td>
-      <td style="padding:6px;">${item.starEn || getEnglishStarName(item.star)}</td>
-      <td style="padding:6px; text-align:right">₹${item.price}</td>
+    <tr style="display: table-row !important;">
+      <td style="display: table-cell !important; padding:4px; border-bottom:1px solid #eee; width:10%;">${idx + 1}</td>
+      <td style="display: table-cell !important; padding:4px; border-bottom:1px solid #eee; width:30%; white-space:nowrap;">${item.serviceIcon} ${item.serviceEn || item.serviceName}</td>
+      <td style="display: table-cell !important; padding:4px; border-bottom:1px solid #eee; width:25%;">${item.name}</td>
+      <td style="display: table-cell !important; padding:4px; border-bottom:1px solid #eee; width:20%;">${item.starEn || getEnglishStarName(item.star)}</td>
+      <td style="display: table-cell !important; padding:4px; border-bottom:1px solid #eee; width:15%; text-align:right;">₹${item.price}</td>
     </tr>
   `).join('');
 
@@ -628,18 +628,18 @@ function showInvoiceModal(historicalOrder = null) {
           </div>
         </div>
 
-        <table class="invoice-table" style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:11px;">
+        <table class="invoice-table" style="width:100%; border-collapse:collapse; margin-bottom:10px; font-size:10px; display: table !important;">
           <thead>
-            <tr style="border-bottom:1px solid var(--border); background:var(--bg-secondary);">
-              <th style="padding:4px; text-align:left; font-weight:800;">SL.NO</th>
-              <th style="padding:4px; text-align:left; font-weight:800;">SERVICE</th>
-              <th style="padding:4px; text-align:left; font-weight:800;">NAME</th>
-              <th style="padding:4px; text-align:left; font-weight:800;">STAR</th>
-              <th style="padding:4px; text-align:right; font-weight:800;">PRICE</th>
+            <tr style="border-bottom:1px solid var(--border); background:var(--bg-secondary); display: table-row !important;">
+              <th style="display: table-cell !important; padding:4px; text-align:left; font-weight:800; width:10%;">SL.NO</th>
+              <th style="display: table-cell !important; padding:4px; text-align:left; font-weight:800; width:30%;">SERVICE</th>
+              <th style="display: table-cell !important; padding:4px; text-align:left; font-weight:800; width:25%;">NAME</th>
+              <th style="display: table-cell !important; padding:4px; text-align:left; font-weight:800; width:20%;">STAR</th>
+              <th style="display: table-cell !important; padding:4px; text-align:right; font-weight:800; width:15%;">PRICE</th>
             </tr>
           </thead>
-          <tbody>
-            ${rows || '<tr><td colspan="5" style="text-align:center; padding:8px;">No records found</td></tr>'}
+          <tbody style="display: table-row-group !important;">
+            ${rows || '<tr><td colspan="5" style="text-align:center; padding:10px;">No records found</td></tr>'}
           </tbody>
         </table>
 
