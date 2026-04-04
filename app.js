@@ -512,7 +512,17 @@ function editDevotee(id) {
   const starEl = document.getElementById('devotee-star');
 
   if (nameEl) nameEl.value = item.name;
-  if (starEl) starEl.value = item.star;
+  
+  // Multilingual safe restore for star:
+  if (starEl) {
+    const nakshatras = getNakshatras();
+    const idx = NAKSHATRAS.en.indexOf(item.starEn);
+    if (idx !== -1) {
+       starEl.value = nakshatras[idx];
+    } else {
+       starEl.value = item.star;
+    }
+  }
   
   showToast('Devotee details loaded for editing', 'success');
 }

@@ -7,12 +7,19 @@ const app = express();
 // ── MongoDB Connection ──
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://ayyappanAdmin:AyyappaSeva2026!@smartdine.knw2tcw.mongodb.net/ayyappanTemple?retryWrites=true&w=majority';
 
-let isConnected = false;
 async function connectDB() {
-  if (isConnected) return;
-  await mongoose.connect(MONGO_URI);
-  isConnected = true;
-  console.log('✅ Connected to MongoDB');
+  if (mongoose.connection.readyState >= 1) return;
+  try {
+    console.log('⏳ Connecting to MongoDB...');
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000, // wait 5 seconds max for Atlas
+      socketTimeoutMS: 45000,
+    });
+    console.log('✅ Connected to MongoDB Atlas');
+  } catch (error) {
+    console.error('❌ MongoDB Connection Error:', error.message);
+    // Don't throw here, allow the individual routes to handle the state
+  }
 }
 
 // ── Mongoose Schema & Model ──
