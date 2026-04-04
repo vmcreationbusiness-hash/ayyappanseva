@@ -617,14 +617,14 @@ function showInvoiceModal(historicalOrder = null) {
           <div class="invoice-subtitle" style="font-size:0.75rem;">Sabarimala Sannidhanam Online</div>
         </div>
 
-        <div class="invoice-meta" style="margin-bottom:10px; padding:6px 12px; background:var(--bg-secondary); border-radius:8px; display:flex; justify-content:space-between;">
-          <div style="text-align:left;">
-            <div class="meta-label" style="font-size:0.65rem; color:var(--text-muted);">${enT('invoiceNo')}</div>
-            <div class="meta-value" style="font-size:0.85rem; font-weight:700;">${invoiceNo}</div>
+        <div class="invoice-meta" style="margin-bottom:15px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:5px 0;">
+          <div style="padding:5px 0; border-bottom:1px dashed var(--border);">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Invoice No</div>
+            <div style="font-size:1.1rem; font-weight:800; color:var(--primary);">${invoiceNo}</div>
           </div>
-          <div style="text-align:right;">
-            <div class="meta-label" style="font-size:0.65rem; color:var(--text-muted);">${enT('date')}</div>
-            <div class="meta-value" style="font-size:0.85rem; font-weight:700;">${date}</div>
+          <div style="padding:5px 0;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Date</div>
+            <div style="font-size:1rem; font-weight:600;">${date}</div>
           </div>
         </div>
 
