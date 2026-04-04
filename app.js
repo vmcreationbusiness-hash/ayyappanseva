@@ -454,7 +454,7 @@ function renderPaymentSection(total) {
          </div>
          <div style="margin-top:2px; font-size:0.6rem; font-weight:600; color:var(--text-muted); opacity:0.6;">${upiId}</div>
        </div>
-       <button class="btn btn-success btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:5px; padding:8px; font-size:0.85rem; border-radius:10px;">
+       <button class="btn btn-full" onclick="generateInvoiceAndPrint()" style="margin-top:8px; padding:12px; font-size:0.9rem; border-radius:12px; background:black !important; color:white !important; border:none; font-weight:800; cursor:pointer;">
          💳 Pay and Print Invoice
        </button>
     </div>
