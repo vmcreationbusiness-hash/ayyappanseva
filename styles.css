@@ -67,15 +67,18 @@
 
 .dashboard-container {
   display: flex;
-  width: 85%;  /* Expanded to 85% of the entire screen as requested */
-  max-width: 1700px; /* Increased max-width for better use of large screens */
-  height: 85vh;
-  min-height: 550px;
+  width: 95%; 
+  max-width: 1700px;
+  height: clamp(550px, 85vh, 1000px);
   gap: 15px;
   padding: 0;
   overflow: hidden;
   position: relative;
   transition: var(--transition);
+}
+
+@media (min-width: 1440px) {
+  .dashboard-container { width: 85%; }
 }
 
 .dash-col {
