@@ -214,9 +214,10 @@ app.post(['/api/proxy/sarvam-stt', '/proxy/sarvam-stt', '/api/proxy/sarvam-stt-v
     if (!req.file) return res.status(400).json({ error: 'No audio file provided' });
 
     const form = new FormData();
+    // Using a generic but safe wav filename as Sarvam likes wav containers best for v1
     form.append('file', req.file.buffer, {
-      filename: req.file.originalname,
-      contentType: req.file.mimetype
+      filename: 'speech_audio.wav',
+      contentType: req.file.mimetype || 'audio/wav'
     });
     form.append('model', model || 'saaras:v1');
     form.append('language_code', language_code || 'en-IN');
@@ -224,14 +225,19 @@ app.post(['/api/proxy/sarvam-stt', '/proxy/sarvam-stt', '/api/proxy/sarvam-stt-v
     const response = await axios.post('https://api.sarvam.ai/speech-to-text', form, {
       headers: {
         ...form.getHeaders(),
-        'api-subscription-key': apiKey
+        'api-subscription-key': apiKey || ''
       }
     });
 
     res.json(response.data);
   } catch (error) {
-    console.error('Proxy STT Error:', error.response?.data || error.message);
-    res.status(error.response?.status || 500).json(error.response?.data || { error: error.message });
+    const errorData = error.response?.data || {};
+    const errorCode = error.response?.status || 500;
+    console.error('Sarvam Error 400 Connection Rejected:', errorData);
+    res.status(errorCode).json({ 
+      error: errorData.error || errorData.message || error.message,
+      details: errorData 
+    });
   }
 });
 
