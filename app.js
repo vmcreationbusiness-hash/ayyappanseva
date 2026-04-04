@@ -564,7 +564,7 @@ async function generateInvoiceAndPrint() {
     await saveOrder(orderData);
     showInvoiceModal(orderData);
     state.cart = []; // Clear only after modal is primed
-    renderCartScreen();
+    renderDashboard();
     showToast('Payment Successful! Receipt Generated ✅');
   } catch (e) {
     console.error('Invoice Error:', e);
@@ -579,12 +579,12 @@ async function generateInvoiceAndPrint() {
 
 function removeFromCart(id) {
   state.cart = state.cart.filter(item => item.id !== id);
-  renderCartScreen();
+  renderDashboard();
 }
 
 function clearCart() {
   state.cart = [];
-  renderCartScreen();
+  renderDashboard();
 }
 
 // ═══════════════════════════════════════════════════════════
