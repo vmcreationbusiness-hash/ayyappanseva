@@ -535,13 +535,14 @@ async function generateInvoiceAndPrint() {
   
   showToast('Processing Payment...', 'success');
   
+  let orderData = null;
   try {
     state.invoiceNo = generateInvoiceNo();
     const date = formatDate();
-    const orderData = {
+    orderData = {
       invoiceNo: state.invoiceNo,
       date: date,
-      items: state.cart,
+      items: [...state.cart], // ensure a fresh copy
       totalAmount: state.cart.reduce((s,i)=>s+i.price,0),
       paymentStatus: 'paid'
     };
@@ -554,7 +555,11 @@ async function generateInvoiceAndPrint() {
   } catch (e) {
     console.error('Invoice Error:', e);
     showToast('Connection issue, but order is saved locally.', 'error');
-    showInvoiceModal(orderData);
+    if (orderData) {
+       showInvoiceModal(orderData);
+    } else {
+       showToast('Could not generate receipt: No data', 'error');
+    }
   }
 }
 
