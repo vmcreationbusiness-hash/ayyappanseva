@@ -609,51 +609,51 @@ function showInvoiceModal(historicalOrder = null) {
   if (!modalOverlay || !modalContent) return;
 
   modalContent.innerHTML = `
-    <div class="invoice-container" style="max-width:100%; padding:0;">
-      <div class="invoice-card" id="invoice-content" style="box-shadow:none; border:none; padding:10px;">
-        <div class="invoice-header" style="text-align:center; border-bottom:1px solid var(--primary); padding-bottom:10px; margin-bottom:15px;">
-          <div class="temple-icon" style="font-size:2rem; margin-bottom:5px;">🙏</div>
-          <h2 class="invoice-title" style="margin:0; font-family:'Cinzel', serif; color:var(--primary); font-size:1.2rem;">Swami Ayyappa Temple - Offering Invoice</h2>
-          <div class="temple-sub" style="font-size:0.8rem; color:var(--text-muted); margin-top:3px;">Sabarimala Sannidhanam Online</div>
+    <div class="invoice-container" style="max-width:100%; padding:0; font-size: 12px;">
+      <div class="invoice-card" id="invoice-content" style="box-shadow:none; border:none; padding:10px; line-height: 1.4;">
+        <div class="invoice-header" style="text-align:center; border-bottom:1px solid var(--primary); padding-bottom:8px; margin-bottom:12px;">
+          <div class="temple-icon" style="font-size:24px; margin-bottom:4px;">🙏</div>
+          <h2 class="invoice-title" style="margin:0; font-family:'Cinzel', serif; color:var(--primary); font-size:1rem; font-weight:700;">Swami Ayyappa Temple - Offering Invoice</h2>
+          <div class="temple-sub" style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">Sabarimala Sannidhanam Online</div>
         </div>
 
-        <div class="invoice-meta" style="margin-bottom:15px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:5px 0;">
-          <div style="padding:5px 0; border-bottom:1px dashed var(--border); text-align:left;">
-            <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Invoice No</div>
-            <div style="font-size:1.1rem; font-weight:800; color:var(--primary); margin-top:2px;">${invoiceNo}</div>
+        <div class="invoice-meta" style="margin-bottom:12px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:4px 0;">
+          <div style="padding:4px 0; border-bottom:1px dashed var(--border); text-align:left;">
+            <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Invoice No</div>
+            <div style="font-size:0.95rem; font-weight:800; color:var(--primary);">${invoiceNo}</div>
           </div>
-          <div style="padding:5px 0; text-align:left;">
-            <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Date</div>
-            <div style="font-size:1rem; font-weight:600; margin-top:2px;">${date}</div>
+          <div style="padding:4px 0; text-align:left;">
+            <div style="font-size:0.65rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Date</div>
+            <div style="font-size:0.85rem; font-weight:600;">${date}</div>
           </div>
         </div>
 
-        <table class="invoice-table" style="width:100%; border-collapse:collapse; margin-bottom:10px; font-size:0.85rem;">
+        <table class="invoice-table" style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:11px;">
           <thead>
             <tr style="border-bottom:1px solid var(--border); background:var(--bg-secondary);">
-              <th style="padding:6px; text-align:left;">Sl.No</th>
-              <th style="padding:6px; text-align:left;">Service</th>
-              <th style="padding:6px; text-align:left;">Name</th>
-              <th style="padding:6px; text-align:left;">Star</th>
-              <th style="padding:6px; text-align:right;">Price</th>
+              <th style="padding:4px; text-align:left; font-weight:800;">SL.NO</th>
+              <th style="padding:4px; text-align:left; font-weight:800;">SERVICE</th>
+              <th style="padding:4px; text-align:left; font-weight:800;">NAME</th>
+              <th style="padding:4px; text-align:left; font-weight:800;">STAR</th>
+              <th style="padding:4px; text-align:right; font-weight:800;">PRICE</th>
             </tr>
           </thead>
           <tbody>
-            ${rows || '<tr><td colspan="5" style="text-align:center; padding:10px;">No devotee records found</td></tr>'}
+            ${rows || '<tr><td colspan="5" style="text-align:center; padding:8px;">No records found</td></tr>'}
           </tbody>
         </table>
 
-        <div class="invoice-total" style="padding:10px 0; border-top:1px solid var(--primary); text-align:right;">
-          <div class="total-text" style="font-size:0.85rem; color:var(--text-muted); font-weight:700;">Grand Total (Paid)</div>
-          <div class="total-amount" style="font-size:1.6rem; font-weight:800; color:var(--secondary); margin-top:4px;">₹${total}</div>
+        <div class="invoice-total" style="padding:8px 0; border-top:1px solid var(--primary); text-align:right;">
+          <div class="total-text" style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">Grand Total (Paid)</div>
+          <div class="total-amount" style="font-size:1.4rem; font-weight:900; color:var(--secondary); margin-top:2px;">₹${total}</div>
         </div>
       </div>
 
-      <div class="btn-group no-print" style="margin-top:15px; display:flex; gap:10px; width:100%;">
-        <button class="btn btn-primary" onclick="window.print()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
+      <div class="btn-group no-print" style="margin-top:12px; display:flex; gap:10px; width:100%;">
+        <button class="btn btn-primary" onclick="window.print()" style="flex:1; padding:10px; font-size:0.85rem; justify-content:center;">
           🖨️ Print Receipt
         </button>
-        <button class="btn btn-secondary" onclick="closeInvoiceModal()" style="flex:1; padding:12px; font-size:0.9rem; justify-content:center;">
+        <button class="btn btn-secondary" onclick="closeInvoiceModal()" style="flex:1; padding:10px; font-size:0.85rem; justify-content:center;">
           🏠 Back to Home
         </button>
       </div>
