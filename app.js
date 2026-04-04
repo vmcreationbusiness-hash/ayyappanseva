@@ -645,15 +645,7 @@ function showInvoiceModal(historicalOrder = null) {
             </tr>
           </thead>
           <tbody style="font-family:'Outfit', sans-serif;">
-            ${items.map((item, idx) => `
-              <tr style="border-bottom:1px solid #F5F5F5;">
-                <td style="padding:12px 8px; font-size:0.95rem;">${idx + 1}</td>
-                <td style="padding:12px 8px; font-size:0.95rem;">${item.serviceIcon} ${item.serviceEn || item.serviceName}</td>
-                <td style="padding:12px 8px; font-size:0.95rem;">${item.name}</td>
-                <td style="padding:12px 8px; font-size:0.95rem;">${item.starEn || getEnglishStarName(item.star)}</td>
-                <td style="padding:12px 8px; text-align:right; font-size:0.95rem; font-weight:600;">₹${item.price}</td>
-              </tr>
-            `).join('')}
+            ${rows || '<tr><td colspan="5" style="text-align:center; padding:10px;">No devotee records found</td></tr>'}
           </tbody>
         </table>
 
