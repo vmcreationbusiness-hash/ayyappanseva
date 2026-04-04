@@ -3727,7 +3727,10 @@ body.bot-speaking .voice-status {
 /* ── Final Single-Sheet Print Blueprint ── */
 @media print {
   /* Suppress browser headers/footers (Date, URL, Page No) */
-  @page { margin: 0; size: auto; }
+  @page { 
+    margin: 0 !important; 
+    size: auto; 
+  }
   
   html, body {
     height: auto !important;
@@ -3740,9 +3743,7 @@ body.bot-speaking .voice-status {
   /* Hide EVERYTHING except the focused invoice */
   body * { visibility: hidden !important; }
   
-  /* Reveal only the sacred invoice card */
-  #invoice-modal-overlay, 
-  #invoice-modal-overlay *, 
+  /* Reveal ONLY the sacred invoice card */
   .invoice-container, 
   .invoice-card, 
   .invoice-card * { 
@@ -3750,7 +3751,7 @@ body.bot-speaking .voice-status {
     display: block !important;
   }
 
-  /* Strategic Positioning: Lock to the Very Top for zero-waste printing */
+  /* Strategic Positioning: Force to the Absolute Top Left */
   #invoice-modal-overlay {
     position: absolute !important;
     top: 0 !important;
@@ -3758,28 +3759,37 @@ body.bot-speaking .voice-status {
     width: 100% !important;
     height: auto !important;
     margin: 0 !important;
-    padding: 10px !important; /* Minimal breathing room */
-    display: flex !important;
-    justify-content: center !important;
+    padding: 0 !important;
+    display: block !important;
     background: white !important;
+    visibility: visible !important;
     z-index: 999999 !important;
+    border: none !important;
+  }
+
+  /* Remove all interactive elements */
+  .btn-group, .no-print, button, .btn {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .invoice-card {
     border: none !important;
     box-shadow: none !important;
     width: 100% !important;
-    max-width: 400px !important; /* Optimized for Thermal & standard printers */
-    margin: 0 auto !important;
-    padding: 0 !important;
+    max-width: 450px !important;
+    margin: 0 !important; /* Force to top-left */
+    padding: 20px !important; /* Professional margins inside paper */
+    background: white !important;
+    border-radius: 0 !important;
   }
 
-  /* Data Row Persistence: Ensure rows stay horizontal */
+  /* Row Locking persistence */
   tr { display: table-row !important; }
   td, th { display: table-cell !important; }
-
-  /* Final Waste Cleanup */
-  .btn-group, .no-print, .nav-bar, .dashboard-container {
-    display: none !important;
-  }
+  
+  .invoice-header { margin-top: 0 !important; padding-top: 0 !important; }
 }
